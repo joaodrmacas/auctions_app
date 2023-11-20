@@ -43,6 +43,6 @@ int main(int argc, char** argv){
     (struct sockaddr*)&addr,&addrlen);
     if(n==-1) /*error*/ exit(1);
     write(1,"echo: ",6); write(1,buffer,n);
-
+//a
 }
 
