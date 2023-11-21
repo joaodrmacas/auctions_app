@@ -19,8 +19,9 @@ using namespace std;
 #define DEBUG 1
 
 #define PUBLIC_PORT "58011"
-#define PORT "58036"
 #define PUBLIC_IP "tejo.tecnico.ulisboa.pt"
+#define MY_IP "localhost"
+#define PORT "58036"
 
 #define NO_USER ""
 #define NO_PASS ""

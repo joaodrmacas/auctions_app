@@ -75,6 +75,7 @@ string getMyIP(){
 
 int cmd_login(istringstream &cmdstream, protocol &UDP) {
     string UID, pass;
+    char status[3];
 
     if (sv.UID != NO_USER){
         STATUS("User failed to login.")
@@ -115,19 +116,24 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
         return -1;
     }
 
-    // always 21 chars long
+    // always 20 chars long
+    memset(UDP.buffer,0,128);
     strcpy(UDP.buffer, "LIN ");
     strcat(UDP.buffer, UID.c_str());
     strcat(UDP.buffer, " ");
     strcat(UDP.buffer, pass.c_str());
-    strcat(UDP.buffer, "\n\0");
+    strcat(UDP.buffer, "\n");
+
+    printf("buffer: %s\n", UDP.buffer);
     
-    if(sendto(UDP.fd,UDP.buffer,128,0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    if(sendto(UDP.fd,UDP.buffer,20,0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
         MSG("Login failed.")
         STATUS("Could not send login message")
         return -1;
     }
     STATUS("Login message sent.")
+
+    memset(UDP.buffer,0,128);
 
     if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
         MSG("Login failed.")
@@ -136,15 +142,17 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
     }
     STATUS("Login response received.");
 
-    if (string(UDP.buffer + 4)=="OK" || string(UDP.buffer + 4)=="REG"){
+    strncpy(status,UDP.buffer+4,3);
+
+    if (status[0]=='O' && status[1]=='K'  || strcmp(status,"REG")==0){
         sv.UID=UID;
         sv.pass=pass;
-        if (UDP.buffer=="OK") MSG("successful login")
-        else MSG("new user registered")
+        if (strcmp(status,"REG")==0) MSG("new user registered")
+        else MSG("successful login")
         STATUS("Login was successful.")
     }
     
-    else if (string(UDP.buffer + 4)=="NOK"){
+    else if (strcmp(status,"NOK")==0){
         MSG("incorrect login attempt")
         STATUS("The password is wrong. Try again.")
     }
@@ -152,7 +160,7 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
     return 0;
 }
 
-int cmd_logout(istringstream &cmdstream, protocol &UDP) {
+int cmd_logout(protocol &UDP) {
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
         STATUS("User not logged in.")
@@ -198,7 +206,7 @@ int cmd_logout(istringstream &cmdstream, protocol &UDP) {
     return 0;
 }
 
-int cmd_unregister(istringstream &cmdstream, protocol &UDP){
+int cmd_unregister(protocol &UDP){
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
         return -1;
@@ -246,6 +254,16 @@ int cmd_unregister(istringstream &cmdstream, protocol &UDP){
     return 0;
 }
 
+int cmd_exit(){
+    if (sv.UID!=NO_USER){
+        MSG("You need to logout before exiting the program.")
+        return -1;
+    }
+
+    STATUS("Exiting program...")
+    exit(0);
+}
+
 int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
     
     istringstream cmdstream(full_cmd);
@@ -262,17 +280,22 @@ int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
         }
     }
     else if (cmd == "logout") {
-        cmd_logout(cmdstream, UDP);
+        if (cmd_logout(UDP)==-1){
+            STATUS("invalid logout")
+        }
     }
 
     else if (cmd == "unregister") {
-        if (cmd_unregister(cmdstream,UDP)==-1){
+        if (cmd_unregister(UDP)==-1){
             STATUS("invalid unregister")
         }
     }
-    // else if (cmd == "exit") {
-    //     cmd_exit(cmdstream);
-    // }
+
+    else if (cmd == "exit") {
+        if (cmd_exit()==-1){
+            STATUS("invalid exit");
+        }
+    }
     // else if (cmd == "open") {
     //     cmd_open(cmdstream);
     // }
@@ -313,7 +336,7 @@ int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
 int main(int argc, char** argv){
     protocol UDP, TCP;
     string cmd;
-    string ASIP=getMyIP(), ASport=PUBLIC_PORT;
+    string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
 
     get_args(argc, argv, ASIP, ASport);
     
