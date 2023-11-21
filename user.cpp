@@ -161,6 +161,8 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
 }
 
 int cmd_logout(protocol &UDP) {
+    char status[3];
+
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
         STATUS("User not logged in.")
@@ -168,17 +170,20 @@ int cmd_logout(protocol &UDP) {
     }
 
     // always 21 chars long
+    memset(UDP.buffer,0,128);
     strcpy(UDP.buffer, "LOU ");
     strcat(UDP.buffer, sv.UID.c_str());
     strcat(UDP.buffer, " ");
     strcat(UDP.buffer, sv.pass.c_str());
-    strcat(UDP.buffer, "\n\0");
+    strcat(UDP.buffer, "\n");
     
-    if(sendto(UDP.fd,UDP.buffer,128,0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    if(sendto(UDP.fd,UDP.buffer,strlen(UDP.buffer),0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
         STATUS("Could not send logout message")
         return -1;
     }
     STATUS("Logout message sent.")
+
+    memset(UDP.buffer,0,128);
 
     UDP.addrlen=sizeof(UDP.addr);
     if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
@@ -187,18 +192,20 @@ int cmd_logout(protocol &UDP) {
     }
     STATUS("Logout response received.")
 
-    if (string(UDP.buffer + 4) == "OK") {
+    strncpy(status,UDP.buffer+4,3);
+
+    if (status[0]=='O' && status[1]=='K') {
         sv.UID = NO_USER;
         sv.pass = NO_PASS;
 
         STATUS("Logout was successful.")
         MSG("Successful logout.")
     }    
-    else if (string(UDP.buffer + 4) == "NOK") {
+    else if ( strcmp(status,"NOK") == 0) {
         STATUS("Logout was unsuccessful.")
         MSG("User not logged in")
     }
-    else if (string(UDP.buffer + 4) == "UNR") {
+    else if ( strcmp(status,"UNR") == 0) {
         STATUS("The logout user doesn't exist")
         MSG("Unknown user.")
     }
@@ -207,25 +214,31 @@ int cmd_logout(protocol &UDP) {
 }
 
 int cmd_unregister(protocol &UDP){
+    char status[3];
+
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
         return -1;
     }
 
+    memset(UDP.buffer,0,128);
     strcpy(UDP.buffer, "UNR ");
     strcat(UDP.buffer, sv.UID.c_str());
     strcat(UDP.buffer, " ");
     strcat(UDP.buffer, sv.pass.c_str());
-    strcat(UDP.buffer, "\n\0");
+    strcat(UDP.buffer, "\n");
 
-    if(sendto(UDP.fd,UDP.buffer,128,0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    if(sendto(UDP.fd,UDP.buffer,strlen(UDP.buffer),0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
         MSG("Unregister failed.");
         STATUS("Could not send unregister message")
         return -1;
     }
     STATUS("Unregister message sent.")
+
+    memset(UDP.buffer,0,128);
     
-    UDP.addrlen=sizeof(UDP.addr);
+    //UDP.addrlen=sizeof(UDP.addr);
+
     if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
         MSG("Unregister failed.");
         STATUS("Could not receive unregister response.")
@@ -233,7 +246,9 @@ int cmd_unregister(protocol &UDP){
     }
     STATUS("Unregister response received.")
 
-    if (string(UDP.buffer)=="OK"){
+    strncpy(status,UDP.buffer+4,3);
+
+    if (status[0]=='O' && status[1]=='K'){
         MSG("successful unregister")
         STATUS("Unregister was successful.")
         //logout
@@ -241,12 +256,12 @@ int cmd_unregister(protocol &UDP){
         sv.pass = NO_PASS;
     }
     
-    else if (string(UDP.buffer)=="NOK"){
+    else if (strcmp(status,"NOK")==0){
         STATUS("Unregister couldn't be done")
         MSG("incorrect unregister attempt")
     }
 
-    else if (string(UDP.buffer+4)=="UNR"){
+    else if (strcmp(status,"UNR")==0){
         STATUS("The unregister user doesnt exist")
         MSG("unknown user")
     }
@@ -371,6 +386,7 @@ int main(int argc, char** argv){
         getline(cin, cmd);
         processCommand(cmd,UDP,TCP);
     }
+
 
     // n=sendto(fd,"Hello!\n",7,0,res->ai_addr,res->ai_addrlen);
     // if(n==-1) ERR("Could not send message")
