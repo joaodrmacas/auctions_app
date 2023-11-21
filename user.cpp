@@ -279,6 +279,33 @@ int cmd_exit(){
     exit(0);
 }
 
+int cmd_open(istringstream &cmdstream, protocol &TCP){
+    string name,asset_fname;
+    float start_value;
+    int timeactive;
+
+    if ( !(cmdstream >> name) ){
+        MSG("name is not specified.")
+        return -1;
+    }
+
+    if ( !(cmdstream >> asset_fname) ){
+        MSG("Asset filename is not specified.")
+        return -1;
+    }
+
+    if ( !(cmdstream >> start_value) ){
+        MSG("start_value is not a valid float.")
+        return -1;
+    }
+
+    if ( !(cmdstream >> timeactive && cmdstream.eof())){
+        MSG("start_value is not a valid int.")
+        return -1;
+    }
+
+}
+
 int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
     
     istringstream cmdstream(full_cmd);
@@ -308,12 +335,15 @@ int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
 
     else if (cmd == "exit") {
         if (cmd_exit()==-1){
-            STATUS("invalid exit");
+            STATUS("invalid exit")
         }
     }
-    // else if (cmd == "open") {
-    //     cmd_open(cmdstream);
-    // }
+
+    else if (cmd == "open") {
+        if (cmd_open(cmdstream)==-1){
+            STATUS("invalid open")
+        };
+    }
     // else if (cmd == "close") {
     //     cmd_close(cmdstream);
     // }
