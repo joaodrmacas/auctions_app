@@ -2,8 +2,10 @@
 
 //system variables
 struct {
+    protocol UDP, TCP;
     string UID = NO_USER;
     string pass = NO_PASS;
+    int to_exit = 0;
 } sv;
 
 int is_valid_ip (string ip) {
@@ -59,7 +61,7 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
     }
 }
 
-string getMyIP(){
+string getMyIP() {
     char hostbuffer[256];
     char *IPbuffer;
     struct hostent *host_entry;
@@ -73,7 +75,7 @@ string getMyIP(){
     return IPbuffer;
 }
 
-int cmd_login(istringstream &cmdstream, protocol &UDP) {
+int cmd_login(istringstream &cmdstream) {
     string UID, pass;
     char status[3];
 
@@ -117,32 +119,32 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
     }
 
     // always 20 chars long
-    memset(UDP.buffer,0,128);
-    strcpy(UDP.buffer, "LIN ");
-    strcat(UDP.buffer, UID.c_str());
-    strcat(UDP.buffer, " ");
-    strcat(UDP.buffer, pass.c_str());
-    strcat(UDP.buffer, "\n");
+    memset(sv.UDP.buffer,0,128);
+    strcpy(sv.UDP.buffer, "LIN ");
+    strcat(sv.UDP.buffer, UID.c_str());
+    strcat(sv.UDP.buffer, " ");
+    strcat(sv.UDP.buffer, pass.c_str());
+    strcat(sv.UDP.buffer, "\n");
 
-    printf("buffer: %s\n", UDP.buffer);
+    printf("buffer: %s\n", sv.UDP.buffer);
     
-    if(sendto(UDP.fd,UDP.buffer,20,0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    if(sendto(sv.UDP.fd,sv.UDP.buffer,20,0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
         MSG("Login failed.")
         STATUS("Could not send login message")
         return -1;
     }
     STATUS("Login message sent.")
 
-    memset(UDP.buffer,0,128);
+    memset(sv.UDP.buffer,0,128);
 
-    if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
+    if(recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen)==-1) {
         MSG("Login failed.")
-        STATUS("Could not receive login response.")
+        STATUS("Could not receive login reply.")
         return -1;
     }
-    STATUS("Login response received.");
+    STATUS("Login reply received.");
 
-    strncpy(status,UDP.buffer+4,3);
+    strncpy(status,sv.UDP.buffer+4,3);
 
     if (status[0]=='O' && status[1]=='K'  || strcmp(status,"REG")==0){
         sv.UID=UID;
@@ -160,7 +162,7 @@ int cmd_login(istringstream &cmdstream, protocol &UDP) {
     return 0;
 }
 
-int cmd_logout(protocol &UDP) {
+int cmd_logout() {
     char status[3];
 
     if (sv.UID == NO_USER) {
@@ -168,52 +170,40 @@ int cmd_logout(protocol &UDP) {
         STATUS("User not logged in.")
         return -1;
     }
-
-    // always 21 chars long
-    memset(UDP.buffer,0,128);
-    strcpy(UDP.buffer, "LOU ");
-    strcat(UDP.buffer, sv.UID.c_str());
-    strcat(UDP.buffer, " ");
-    strcat(UDP.buffer, sv.pass.c_str());
-    strcat(UDP.buffer, "\n");
     
-    if(sendto(UDP.fd,UDP.buffer,strlen(UDP.buffer),0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    string sbuff = "LOU " + sv.UID + " " + sv.pass + "\n";
+
+    if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(),0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
         STATUS("Could not send logout message")
         return -1;
     }
     STATUS("Logout message sent.")
 
-    memset(UDP.buffer,0,128);
+    memset(sv.UDP.buffer,0,128);
 
-    UDP.addrlen=sizeof(UDP.addr);
-    if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
-        STATUS("Could not receive logout response.")
+    sv.UDP.addrlen=sizeof(sv.UDP.addr);
+    size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
+    if(n==-1) {
+        STATUS("Could not receive logout reply.")
         return -1;
     }
-    STATUS("Logout response received.")
+    STATUS("Logout reply received.")
 
-    strncpy(status,UDP.buffer+4,3);
+    sv.UDP.buffer[n-1]='\0';
+    sbuff = string(sv.UDP.buffer + 4);
 
-    if (status[0]=='O' && status[1]=='K') {
+    if (sbuff == "OK") {
         sv.UID = NO_USER;
         sv.pass = NO_PASS;
-
-        STATUS("Logout was successful.")
         MSG("Successful logout.")
     }    
-    else if ( strcmp(status,"NOK") == 0) {
-        STATUS("Logout was unsuccessful.")
-        MSG("User not logged in")
-    }
-    else if ( strcmp(status,"UNR") == 0) {
-        STATUS("The logout user doesn't exist")
-        MSG("Unknown user.")
-    }
+    else if (sbuff == "NOK") MSG("User not logged in")
+    else if (sbuff == "UNR") MSG("Unknown user.")
 
     return 0;
 }
 
-int cmd_unregister(protocol &UDP){
+int cmd_unregister() {
     char status[3];
 
     if (sv.UID == NO_USER) {
@@ -221,32 +211,32 @@ int cmd_unregister(protocol &UDP){
         return -1;
     }
 
-    memset(UDP.buffer,0,128);
-    strcpy(UDP.buffer, "UNR ");
-    strcat(UDP.buffer, sv.UID.c_str());
-    strcat(UDP.buffer, " ");
-    strcat(UDP.buffer, sv.pass.c_str());
-    strcat(UDP.buffer, "\n");
+    memset(sv.UDP.buffer,0,128);
+    strcpy(sv.UDP.buffer, "UNR ");
+    strcat(sv.UDP.buffer, sv.UID.c_str());
+    strcat(sv.UDP.buffer, " ");
+    strcat(sv.UDP.buffer, sv.pass.c_str());
+    strcat(sv.UDP.buffer, "\n");
 
-    if(sendto(UDP.fd,UDP.buffer,strlen(UDP.buffer),0,UDP.res->ai_addr,UDP.res->ai_addrlen) == -1) {
+    if(sendto(sv.UDP.fd,sv.UDP.buffer,strlen(sv.UDP.buffer),0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
         MSG("Unregister failed.");
         STATUS("Could not send unregister message")
         return -1;
     }
     STATUS("Unregister message sent.")
 
-    memset(UDP.buffer,0,128);
+    memset(sv.UDP.buffer,0,128);
     
-    //UDP.addrlen=sizeof(UDP.addr);
+    //sv.UDP.addrlen=sizeof(sv.UDP.addr);
 
-    if(recvfrom(UDP.fd,UDP.buffer,128,0,(struct sockaddr*) &UDP.addr,&UDP.addrlen)==-1) {
+    if(recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen)==-1) {
         MSG("Unregister failed.");
-        STATUS("Could not receive unregister response.")
+        STATUS("Could not receive unregister reply.")
         return -1;
     }
-    STATUS("Unregister response received.")
+    STATUS("Unregister reply received.")
 
-    strncpy(status,UDP.buffer+4,3);
+    strncpy(status,sv.UDP.buffer+4,3);
 
     if (status[0]=='O' && status[1]=='K'){
         MSG("successful unregister")
@@ -269,20 +259,25 @@ int cmd_unregister(protocol &UDP){
     return 0;
 }
 
-int cmd_exit(){
+int cmd_exit() {
     if (sv.UID!=NO_USER){
         MSG("You need to logout before exiting the program.")
         return -1;
     }
 
     STATUS("Exiting program...")
-    exit(0);
+    sv.to_exit = 1;
 }
 
-int cmd_open(istringstream &cmdstream, protocol &TCP){
+int cmd_open(istringstream &cmdstream) {
     string name,asset_fname;
     float start_value;
     int timeactive;
+
+    if (sv.UID == NO_USER) {
+        MSG("You are not logged in.")
+        return -1;
+    }
 
     if ( !(cmdstream >> name) ){
         MSG("name is not specified.")
@@ -294,19 +289,88 @@ int cmd_open(istringstream &cmdstream, protocol &TCP){
         return -1;
     }
 
+    if (asset_fname.length() > FILE_NAME_MAX_SIZE) {
+        MSG("Asset filename is too long.")
+        return -1;
+    }
+
     if ( !(cmdstream >> start_value) ){
         MSG("start_value is not a valid float.")
         return -1;
     }
 
-    if ( !(cmdstream >> timeactive && cmdstream.eof())){
-        MSG("start_value is not a valid int.")
+    // is float so we compare a little under the zero
+    if (start_value < -0.000001) {
+        MSG("start_value is negative.")
         return -1;
     }
 
+    if ( !(cmdstream >> timeactive)){
+        MSG("timeactive is not a valid int.")
+        return -1;
+    }
+    
+    if (cmdstream.eof()) {
+        MSG("too many arguments.")
+        return -1;
+    }
+
+    // Message
+    string sbuff = "OPA " + sv.UID + " " + sv.pass + " " + name + " " 
+                    + to_string(start_value) + " " + to_string(timeactive) + " "
+                    + asset_fname + " ";
+
+    size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+    if (n != sbuff.length()) {
+        MSG("Could not send open message")
+        return -1;
+    }
+    
+    fstream fasset(asset_fname, ios::binary | ios::ate);
+
+    if (fasset.is_open()) {
+        int size = fasset.tellg();
+
+        if (size > FILE_MAX_SIZE) {
+            MSG("Asset file is too big (> ", FILE_MAX_SIZE, " bytes)")
+            return -1;
+        }
+
+        fasset.seekg(0, ios::beg);
+        
+        sbuff = to_string(size) + " ";
+        n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+        if (n != sbuff.length()) {
+            MSG("Could not send open message")
+            return -1;
+        }
+
+        while (size > 0) {
+            fasset.read(sv.TCP.buffer, 128);
+            n = write(sv.TCP.fd, sv.TCP.buffer, fasset.gcount());
+            if (n != fasset.gcount()) {
+                MSG("Could not send open message")
+                return -1;
+            }
+            size -= fasset.gcount();
+        }
+
+        if (write(sv.TCP.fd, "\n", 1) != 1) {
+            MSG("Could not send open message")
+            return -1;
+        }
+    }
+    else {
+        MSG("Could not open asset file")
+        return -1;
+    }
+
+    // Reply
+    // devemos enviar sempre ERR ao server se recebermos do server uma mensagem
+    // que não seja coerente com o protocolo?
 }
 
-int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
+int processCommand(string full_cmd) {
     
     istringstream cmdstream(full_cmd);
     string word, cmd;
@@ -317,18 +381,18 @@ int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
     }
 
     if (cmd=="login") {
-        if (cmd_login(cmdstream, UDP) == -1){
+        if (cmd_login(cmdstream) == -1){
             STATUS("invalid login.")
         }
     }
     else if (cmd == "logout") {
-        if (cmd_logout(UDP)==-1){
+        if (cmd_logout()==-1){
             STATUS("invalid logout")
         }
     }
 
     else if (cmd == "unregister") {
-        if (cmd_unregister(UDP)==-1){
+        if (cmd_unregister()==-1){
             STATUS("invalid unregister")
         }
     }
@@ -378,8 +442,7 @@ int processCommand(string full_cmd, protocol &UDP, protocol &TCP) {
     return 0;
 }
 
-int main(int argc, char** argv){
-    protocol UDP, TCP;
+int main(int argc, char** argv) {
     string cmd;
     string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
 
@@ -387,46 +450,57 @@ int main(int argc, char** argv){
     
     // FIXME all socket errors treated as STATUS (no exit) 
     // UDP SOCKET
-    UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
-    if(UDP.fd == -1) STATUS("Could not create socket [UDP]")
+    sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
+    if(sv.UDP.fd == -1) STATUS("Could not create socket [UDP]")
 
-    memset(&UDP.hints, 0, sizeof UDP.hints);
-    UDP.hints.ai_family=AF_INET; //IPv4
-    UDP.hints.ai_socktype=SOCK_DGRAM; //UDP socket
+    memset(&sv.UDP.hints, 0, sizeof sv.UDP.hints);
+    sv.UDP.hints.ai_family=AF_INET; //IPv4
+    sv.UDP.hints.ai_socktype=SOCK_DGRAM; //UDP socket
 
-    UDP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&UDP.hints,&UDP.res);
-    if(UDP.errcode!=0) STATUS("Could not get address info [UDP]")
-
-    // TCP SOCKET
-    TCP.fd=socket(AF_INET,SOCK_STREAM,0); //TCP socket
-    if(TCP.fd == -1) STATUS("Could not create socket [TCP]")
-
-    memset(&TCP.hints, 0, sizeof TCP.hints);
-    TCP.hints.ai_family=AF_INET; //IPv4
-    TCP.hints.ai_socktype=SOCK_STREAM; //TCP socket
-
-    TCP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&TCP.hints,&TCP.res);
-    if(TCP.errcode!=0) STATUS("Could not get address info [TCP]")
-
-    if (connect(TCP.fd, TCP.res->ai_addr, TCP.res->ai_addrlen) == -1)
-        STATUS("Could not connect [TCP]")
-
-    while(1){
-        cout << "> ";
-        getline(cin, cmd);
-        processCommand(cmd,UDP,TCP);
+    sv.UDP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&sv.UDP.hints,&sv.UDP.res);
+    if(sv.UDP.errcode!=0) {
+        STATUS("Could not get address info [UDP]")
+        exit(1);
     }
 
+    // TCP SOCKET
+    sv.TCP.fd=socket(AF_INET,SOCK_STREAM,0); //TCP socket
+    if(sv.TCP.fd == -1) {
+        STATUS("Could not create socket [TCP]")
+        freeaddrinfo(sv.UDP.res);
+        exit(1);
+    }
 
-    // n=sendto(fd,"Hello!\n",7,0,res->ai_addr,res->ai_addrlen);
-    // if(n==-1) ERR("Could not send message")
-    
-    // addrlen=sizeof(addr);
-    // n=recvfrom(fd,buffer,128,0,(struct sockaddr*) &addr,&addrlen);
-    // if(n==-1) ERR("Could not receive message")
-        
-    // write(1,"echo: ",6);
-    // write(1,buffer,n);
+    memset(&sv.TCP.hints, 0, sizeof sv.TCP.hints);
+    sv.TCP.hints.ai_family=AF_INET; //IPv4
+    sv.TCP.hints.ai_socktype=SOCK_STREAM; //TCP socket
+
+    sv.TCP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&sv.TCP.hints,&sv.TCP.res);
+    if(sv.TCP.errcode!=0) {
+        STATUS("Could not get address info [TCP]")
+        freeaddrinfo(sv.UDP.res);
+        close(sv.UDP.fd);
+        exit(1);
+    }
+
+    if (connect(sv.TCP.fd, sv.TCP.res->ai_addr, sv.TCP.res->ai_addrlen) == -1) {
+        STATUS("Could not connect [TCP]")
+        freeaddrinfo(sv.UDP.res);
+        close(sv.UDP.fd);
+        freeaddrinfo(sv.TCP.res);
+        exit(1);
+    }
+
+    while(!sv.to_exit){
+        cout << "> ";
+        getline(cin, cmd);
+        processCommand(cmd);
+    }
+
+    freeaddrinfo(sv.UDP.res);
+    close(sv.UDP.fd);
+    freeaddrinfo(sv.TCP.res);
+    close(sv.TCP.fd);
 
     return 0;
 }

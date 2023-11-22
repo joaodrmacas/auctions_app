@@ -13,6 +13,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
@@ -25,6 +26,9 @@ using namespace std;
 
 #define NO_USER ""
 #define NO_PASS ""
+
+#define FILE_NAME_MAX_SIZE 24
+#define FILE_MAX_SIZE 10000000
 
 #define ERR(...)                                                        \
     {                                                                   \
