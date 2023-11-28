@@ -91,7 +91,7 @@ int cmd_login(istringstream &cmdstream) {
     }
 
     for (char c : UID) {
-        if (!std::isdigit(c)) {
+        if (!isdigit(c)) {
             MSG("UID should be only numeric.")
             return -1;
         }
@@ -107,7 +107,7 @@ int cmd_login(istringstream &cmdstream) {
     }
 
     for (char c : pass) {
-        if (!std::isalnum(c)) {
+        if (!isalnum(c)) {
             MSG("Password should be alphanumeric.")
             return false;
         }
@@ -118,17 +118,10 @@ int cmd_login(istringstream &cmdstream) {
         return -1;
     }
 
-    // always 20 chars long
-    memset(sv.UDP.buffer,0,128);
-    strcpy(sv.UDP.buffer, "LIN ");
-    strcat(sv.UDP.buffer, UID.c_str());
-    strcat(sv.UDP.buffer, " ");
-    strcat(sv.UDP.buffer, pass.c_str());
-    strcat(sv.UDP.buffer, "\n");
+    string sbuff = "LIN " + UID + " " + pass + "\n";
 
-    printf("buffer: %s\n", sv.UDP.buffer);
-    
-    if(sendto(sv.UDP.fd,sv.UDP.buffer,20,0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
+    if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, 
+                sv.UDP.res->ai_addrlen) == -1) {
         MSG("Login failed.")
         STATUS("Could not send login message")
         return -1;
@@ -137,14 +130,20 @@ int cmd_login(istringstream &cmdstream) {
 
     memset(sv.UDP.buffer,0,128);
 
-    if(recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen)==-1) {
+    // sv.UDP.addrlen=sizeof(sv.UDP.addr);
+    size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
+    if(n==-1) {
         MSG("Login failed.")
         STATUS("Could not receive login reply.")
         return -1;
     }
     STATUS("Login reply received.");
 
-    strncpy(status,sv.UDP.buffer+4,3);
+    sv.UDP.buffer[n-1]='\0';
+
+    if (string(sv.UDP.buffer).compare(0, 4, "RLI "))
+
+    sbuff = string(sv.UDP.buffer + 4);
 
     if (status[0]=='O' && status[1]=='K'  || strcmp(status,"REG")==0){
         sv.UID=UID;
@@ -181,7 +180,7 @@ int cmd_logout() {
 
     memset(sv.UDP.buffer,0,128);
 
-    sv.UDP.addrlen=sizeof(sv.UDP.addr);
+    // sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n==-1) {
         STATUS("Could not receive logout reply.")
@@ -199,7 +198,9 @@ int cmd_logout() {
     }    
     else if (sbuff == "NOK") MSG("User not logged in")
     else if (sbuff == "UNR") MSG("Unknown user.")
-
+    else if (sbuff == "ERR") MSG("Wrong syntax.")
+    else MSG("Something went wrong. Can't comprehend server's reply.")
+ 
     return 0;
 }
 
