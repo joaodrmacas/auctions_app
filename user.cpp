@@ -61,20 +61,6 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
     }
 }
 
-string getMyIP() {
-    char hostbuffer[256];
-    char *IPbuffer;
-    struct hostent *host_entry;
-    int hostname;
-    hostname = gethostname(hostbuffer, sizeof(hostbuffer));
-    if (hostname == -1) ERR("gethostname")
-    host_entry = gethostbyname(hostbuffer);
-    if (host_entry == NULL) ERR("gethostbyname")
-    IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
-    if (IPbuffer == NULL) ERR("inet_ntoa")
-    return IPbuffer;
-}
-
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
     char status[3];
@@ -371,6 +357,46 @@ int cmd_open(istringstream &cmdstream) {
     // que não seja coerente com o protocolo?
 }
 
+
+
+int cmd_close(istringstream &cmdstream){
+    string AID;
+
+    if (sv.UID == NO_USER) {
+        MSG("You are not logged in.")
+        return -1;
+    }
+
+    if (!(cmdstream >> AID) ){
+        MSG("AID not specified.")
+        return -1;
+    }
+
+    string buff = sv.UID + " " + sv.pass + " " + AID + "\n";
+    size_t n = write(sv.TCP.fd, buff.c_str(), buff.length());
+
+
+    if (n != buff.length()) {
+        MSG("Close failed.");
+        STATUS("Could not send close request.");
+        return -1;
+    }
+
+    memset(sv.TCP.buffer,0,128);
+    n = read(sv.TCP.fd, sv.TCP.buffer, 128);
+
+    if (n == -1){
+        MSG("Close failed.");
+        STATUS("Could not receive close reply.");
+    }
+
+    //Reply este é perciso? demos memset em cima mas a resposta pode ter lixo?
+    sv.UDP.buffer[n-1] = '\0';
+    buff = string(sv.UDP.buffer + 4);
+
+
+}
+
 int processCommand(string full_cmd) {
     
     istringstream cmdstream(full_cmd);
@@ -409,9 +435,11 @@ int processCommand(string full_cmd) {
             STATUS("invalid open")
         };
     }
-    // else if (cmd == "close") {
-    //     cmd_close(cmdstream);
-    // }
+    else if (cmd == "close") {
+        if (cmd_close(cmdstream)==-1){
+            STATUS("invalid close")
+        }
+    }
     // else if (cmd == "myauctions" || cmd == "ma") {
     //     cmd_myauctions(cmdstream);
     // }
