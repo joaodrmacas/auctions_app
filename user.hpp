@@ -30,6 +30,8 @@ using namespace std;
 #define FILE_NAME_MAX_SIZE 24
 #define FILE_MAX_SIZE 10000000
 
+#define EXPAND(x) x
+
 #define ERR(...)                                                        \
     {                                                                   \
         if (DEBUG)                                                      \
@@ -37,19 +39,24 @@ using namespace std;
         exit(1);                                                        \
     }
 
-#define STATUS(...)                                                 \
-    {printf("[STATUS]: %s | Line %d\n", __VA_ARGS__, __LINE__);}
+#define STATUS(msg)                                                 \
+    {printf("[STATUS]: %s | Line %d\n", msg, __LINE__);}
 
-#define MSG(...)                    \
-    {printf("%s\n", __VA_ARGS__);}   \
+#define STATUS_WA(format, ...) \
+    {printf("[STATUS]: " format " | Line %d\n", __VA_ARGS__, __LINE__);}
 
+#define MSG(msg)                    \
+    {printf("%s\n", msg);}               \
+
+#define MSG_WA(format, ...)         \
+    {printf(format, __VA_ARGS__ );} \
 
 typedef struct protocol {
     int fd,errcode;
     socklen_t addrlen;
     struct addrinfo hints,*res;
     struct sockaddr_in addr;
-    char buffer[128];
+    char buffer[129];
 } protocol;
 
 #endif 

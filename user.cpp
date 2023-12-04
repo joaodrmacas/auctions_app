@@ -63,13 +63,12 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
 
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
-    char status[3];
 
     if (sv.UID != NO_USER){
-        STATUS("User failed to login.")
-        MSG("You are already logged in")
+        MSG("You are already logged in.")
         return -1;
     }
+    STATUS("User isn't logged in.")
     
     if ( !(cmdstream >> UID) ){
         MSG("UID not specified.")
@@ -125,40 +124,44 @@ int cmd_login(istringstream &cmdstream) {
     }
     STATUS("Login reply received.");
 
-    sv.UDP.buffer[n-1]='\0';
+    sv.UDP.buffer[n]='\0';
 
-    if (string(sv.UDP.buffer).compare(0, 4, "RLI "))
+    if (!string(sv.UDP.buffer).compare(0, 4, "RLI ")) {
+        MSG("Something went wrong.")
+        STATUS_WA("Can't comprehend server's reply: %s", sv.UDP.buffer)
+        return -1;
+    }
 
     sbuff = string(sv.UDP.buffer + 4);
 
-    if (status[0]=='O' && status[1]=='K'  || strcmp(status,"REG")==0){
+    if (sbuff == "OK"  || sbuff == "REG") {
         sv.UID=UID;
         sv.pass=pass;
-        if (strcmp(status,"REG")==0) MSG("new user registered")
-        else MSG("successful login")
-        STATUS("Login was successful.")
+        if (sbuff == "REG") MSG("Registration was successful. Logged in.")
+        else MSG("Login was successful.")
     }
-    
-    else if (strcmp(status,"NOK")==0){
-        MSG("incorrect login attempt")
-        STATUS("The password is wrong. Try again.")
+    else if (sbuff == "NOK") MSG("The password is wrong. Try again.")
+    else if (sbuff == "ERR") MSG("Wrong syntax.")
+    else {
+        MSG("Something went wrong.")
+        STATUS_WA("Can't comprehend server's reply: %s", sv.UDP.buffer)
+        return -1;
     }
 
     return 0;
 }
 
 int cmd_logout() {
-    char status[3];
-
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
-        STATUS("User not logged in.")
         return -1;
     }
-    
+    STATUS("User is logged in.")
+
     string sbuff = "LOU " + sv.UID + " " + sv.pass + "\n";
 
-    if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(),0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
+    if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, sv.UDP.res->ai_addrlen) == -1) {
+        MSG("Logout failed.")
         STATUS("Could not send logout message")
         return -1;
     }
@@ -169,12 +172,20 @@ int cmd_logout() {
     // sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n==-1) {
+        MSG("Logout failed.")
         STATUS("Could not receive logout reply.")
         return -1;
     }
     STATUS("Logout reply received.")
 
-    sv.UDP.buffer[n-1]='\0';
+    sv.UDP.buffer[n]='\0';
+
+    if (!string(sv.UDP.buffer).compare(0, 4, "RLO ")) {
+        MSG("Something went wrong.")
+        STATUS_WA("Can't comprehend server's reply: %s", sv.UDP.buffer)
+        return -1;
+    }
+
     sbuff = string(sv.UDP.buffer + 4);
 
     if (sbuff == "OK") {
@@ -182,10 +193,13 @@ int cmd_logout() {
         sv.pass = NO_PASS;
         MSG("Successful logout.")
     }    
-    else if (sbuff == "NOK") MSG("User not logged in")
+    else if (sbuff == "NOK") MSG("User not logged in.")
     else if (sbuff == "UNR") MSG("Unknown user.")
     else if (sbuff == "ERR") MSG("Wrong syntax.")
-    else MSG("Something went wrong. Can't comprehend server's reply.")
+    else {
+        MSG("Something went wrong.")
+        STATUS_WA("Can't comprehend server's reply: %s", sv.UDP.buffer)
+    }
  
     return 0;
 }
@@ -197,15 +211,11 @@ int cmd_unregister() {
         MSG("You are not logged in.")
         return -1;
     }
+    STATUS("User is logged in.")
 
-    memset(sv.UDP.buffer,0,128);
-    strcpy(sv.UDP.buffer, "UNR ");
-    strcat(sv.UDP.buffer, sv.UID.c_str());
-    strcat(sv.UDP.buffer, " ");
-    strcat(sv.UDP.buffer, sv.pass.c_str());
-    strcat(sv.UDP.buffer, "\n");
+    string sbuff = "UNR " + sv.UID + " " + sv.pass + "\n";
 
-    if(sendto(sv.UDP.fd,sv.UDP.buffer,strlen(sv.UDP.buffer),0,sv.UDP.res->ai_addr,sv.UDP.res->ai_addrlen) == -1) {
+    if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, sv.UDP.res->ai_addrlen) == -1) {
         MSG("Unregister failed.");
         STATUS("Could not send unregister message")
         return -1;
@@ -215,15 +225,16 @@ int cmd_unregister() {
     memset(sv.UDP.buffer,0,128);
     
     //sv.UDP.addrlen=sizeof(sv.UDP.addr);
-
-    if(recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen)==-1) {
+    size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,128,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
+    if(n == -1) {
         MSG("Unregister failed.");
         STATUS("Could not receive unregister reply.")
         return -1;
     }
     STATUS("Unregister reply received.")
 
-    strncpy(status,sv.UDP.buffer+4,3);
+    sv.UDP.buffer[n]='\0';
+    sbuff = string(sv.UDP.buffer + 4);
 
     if (status[0]=='O' && status[1]=='K'){
         MSG("successful unregister")
@@ -319,7 +330,7 @@ int cmd_open(istringstream &cmdstream) {
         int size = fasset.tellg();
 
         if (size > FILE_MAX_SIZE) {
-            MSG("Asset file is too big (> ", FILE_MAX_SIZE, " bytes)")
+            MSG_WA("Asset file is too big (> %d) bytes", FILE_MAX_SIZE)
             return -1;
         }
 
@@ -391,7 +402,7 @@ int cmd_close(istringstream &cmdstream){
     }
 
     //Reply este é perciso? demos memset em cima mas a resposta pode ter lixo?
-    sv.UDP.buffer[n-1] = '\0';
+    sv.UDP.buffer[n] = '\0';
     buff = string(sv.UDP.buffer + 4);
 
 
@@ -472,11 +483,15 @@ int processCommand(string full_cmd) {
 }
 
 int main(int argc, char** argv) {
+
     string cmd;
     string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
 
     get_args(argc, argv, ASIP, ASport);
     
+    memset(sv.UDP.buffer,0,129);
+    memset(sv.TCP.buffer,0,129);
+
     // FIXME all socket errors treated as STATUS (no exit) 
     // UDP SOCKET
     sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
@@ -519,6 +534,9 @@ int main(int argc, char** argv) {
         freeaddrinfo(sv.TCP.res);
         exit(1);
     }
+
+    sv.UDP.addrlen=sizeof(sv.UDP.addr);
+    sv.TCP.addrlen=sizeof(sv.TCP.addr);
 
     while(!sv.to_exit){
         cout << "> ";
