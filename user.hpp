@@ -18,6 +18,7 @@
 using namespace std;
 
 #define DEBUG 1
+#define STATUS_ON 1
 
 #define PUBLIC_PORT "58011"
 #define PUBLIC_IP "tejo.tecnico.ulisboa.pt"
@@ -30,8 +31,6 @@ using namespace std;
 #define FILE_NAME_MAX_SIZE 24
 #define FILE_MAX_SIZE 10000000
 
-#define EXPAND(x) x
-
 #define ERR(...)                                                        \
     {                                                                   \
         if (DEBUG)                                                      \
@@ -39,11 +38,11 @@ using namespace std;
         exit(1);                                                        \
     }
 
-#define STATUS(msg)                                                 \
-    {printf("[STATUS]: %s | Line %d\n", msg, __LINE__);}
+#define STATUS(msg)                                                     \
+    {if (STATUS_ON) printf("[STATUS]: %s | Line %d\n", msg, __LINE__);}
 
-#define STATUS_WA(format, ...) \
-    {printf("[STATUS]: " format " | Line %d\n", __VA_ARGS__, __LINE__);}
+#define STATUS_WA(format, ...)                                          \
+    {if (STATUS_ON) printf("[STATUS]: " format " | Line %d\n", __VA_ARGS__, __LINE__);}
 
 #define MSG(msg)                    \
     {printf("%s\n", msg);}               \
@@ -56,7 +55,14 @@ typedef struct protocol {
     socklen_t addrlen;
     struct addrinfo hints,*res;
     struct sockaddr_in addr;
-    char buffer[129];
+    char buffer[512];
 } protocol;
+
+#define BUFFER_SIZE 511
+
+/*
+-> 512 + 1 (1 for the case where the buffer receives 512 bytes and the last byte has to be'\0')
+-> 512 bytes because a file name can have 255 caracteres (255 bytes) in UNIX
+*/
 
 #endif 
