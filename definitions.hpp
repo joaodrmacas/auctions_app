@@ -1,5 +1,5 @@
-#ifndef USER_HPP
-#define USER_HPP
+#ifndef __DEFINITIONS_HPP__
+#define __DEFINITIONS_HPP__
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -19,14 +19,6 @@ using namespace std;
 
 #define DEBUG 1
 #define STATUS_ON 1
-
-#define PUBLIC_PORT "58011"
-#define PUBLIC_IP "tejo.tecnico.ulisboa.pt"
-#define MY_IP "localhost"
-#define PORT "58036"
-
-#define NO_USER ""
-#define NO_PASS ""
 
 #define FILE_NAME_MAX_SIZE 24
 #define FILE_MAX_SIZE 10000000
@@ -49,14 +41,6 @@ using namespace std;
 
 #define MSG_WA(format, ...)         \
     {printf(format, __VA_ARGS__ );} \
-
-typedef struct protocol {
-    int fd,errcode;
-    socklen_t addrlen;
-    struct addrinfo hints,*res;
-    struct sockaddr_in addr;
-    char buffer[512];
-} protocol;
 
 #define BUFFER_SIZE 511
 
