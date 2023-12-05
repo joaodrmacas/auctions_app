@@ -42,7 +42,7 @@ using namespace std;
 #define MSG_WA(format, ...)         \
     {printf(format, __VA_ARGS__ );} \
 
-#define BUFFER_SIZE 511
+#define BUFFER_SIZE 6010
 
 /*
 -> 512 + 1 (1 for the case where the buffer receives 512 bytes and the last byte has to be'\0')

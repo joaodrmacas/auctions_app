@@ -17,6 +17,19 @@ int replaceEvenSpacesWithNewline(string& inputString,int isEvenSpace) {
     return spaces%2;
 }
 
+bool is_valid_AID(string AID){
+     for (char c : AID) {
+        if (!isdigit(c)) {
+            return false;  // If any character is not a digit, the string is not numeric
+        }
+    }
+    return AID.length() == 3;
+}
+
+bool is_valid_state(string AID){
+    return AID.length()==1 && (AID[0] == '0' or AID[1] == '1') ;
+}
+
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
 
@@ -59,7 +72,7 @@ int cmd_login(istringstream &cmdstream) {
         return -1;
     }
 
-    if (cmdstream.eof()) {
+    if (!cmdstream.eof()) {
         MSG("Too many arguments.")
         return -1;
     }
@@ -78,41 +91,50 @@ int cmd_login(istringstream &cmdstream) {
 
     // sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
-    if(n == -1) {
+    if(n <= 0) {
         MSG("Something went wrong.")
-        STATUS("Could not receive login reply.")
+        if (n == -1) STATUS("Could not receive login reply.")
+        else STATUS("Login reply is empty.")
         return -1;
     }
     
-    if (n <= 3) {
+    // Retirar o \n no final e colocar \0
+    sv.UDP.buffer[n-1]='\0';
+
+    STATUS_WA("Login reply received: %s", sv.UDP.buffer);
+
+    istringstream reply(string(sv.UDP.buffer));
+
+    string opcode;
+    if (!(reply >> opcode)) {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        STATUS("Can't comprehend server's reply: no opcode.")
         return -1;
     }
+    
+    if (opcode == "RLI") {
+        string status;
 
-    sv.UDP.buffer[n]='\0';
-    sbuff = string(sv.UDP.buffer);
-    // remove the \n at the end
-    sbuff = sbuff.substr(0, sbuff.length() - 1);
-
-    STATUS_WA("Login reply received: %s", sbuff.c_str());
-
-    string opcode = sbuff.substr(0, 4);
-    if (sbuff == "ERR") MSG("Wrong syntax.")
-    else if (sbuff.length() <= 3 || opcode != "RLI " || sbuff.length() == 4) {
-        MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
-        return -1;
+        if (!(reply >> status)) {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: no status.")
+            return -1;
+        }
+        
+        if (status == "OK"  || status == "REG") {
+            sv.UID=UID;
+            sv.pass=pass;
+            if (status == "REG") MSG("Registration was successful. Logged in.")
+            else MSG("Login was successful.")
+        }
+        else if (status == "NOK") MSG("The password is wrong. Try again.")
+        else {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply.")
+            return -1;
+        }
     }
-
-    string args = sbuff.substr(4);
-    if (args == "OK"  || args == "REG") {
-        sv.UID=UID;
-        sv.pass=pass;
-        if (args == "REG") MSG("Registration was successful. Logged in.")
-        else MSG("Login was successful.")
-    }
-    else if (args == "NOK") MSG("The password is wrong. Try again.")
+    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
         STATUS("Can't comprehend server's reply.")
@@ -142,37 +164,54 @@ int cmd_logout() {
 
     // sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
-    if(n==-1) {
+    if(n <= 0) {
         MSG("Something went wrong.")
-        STATUS("Could not receive logout reply.")
-        return -1;
-    }
-    STATUS("Logout reply received.")
-
-    sv.UDP.buffer[n]='\0';
-    sbuff = string(sv.UDP.buffer);
-    sbuff = sbuff.substr(0, sbuff.length() - 1);
-
-    STATUS_WA("Login reply received: %s", sbuff.c_str());
-
-    if (sbuff.substr(0, 4) != "RLO ") {
-        MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (n == -1) STATUS("Could not receive logout reply.")
+        else STATUS("Logout reply is empty.")
         return -1;
     }
 
-    string args = sbuff.substr(4);
-    if (args == "OK") {
-        sv.UID = NO_USER;
-        sv.pass = NO_PASS;
-        MSG("Successful logout.")
-    }    
-    else if (args == "NOK") MSG("User not logged in.")
-    else if (args == "UNR") MSG("Unknown user.")
-    else if (args == "ERR") MSG("Wrong syntax.")
+    // Retirar o \n no final e colocar \0
+    sv.UDP.buffer[n-1]='\0';
+
+    STATUS_WA("Logout reply received: %s", sv.UDP.buffer);
+
+    istringstream reply(string(sv.UDP.buffer));
+
+    string opcode;
+    if (!(reply >> opcode)) {
+        MSG("Something went wrong.")
+        STATUS("Can't comprehend server's reply: no opcode.")
+        return -1;
+    }
+    
+    if (opcode == "RLO") {
+        string status;
+
+        if (!(reply >> status)) {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: no status.")
+            return -1;
+        }
+        
+        if (status == "OK") {
+            sv.UID = NO_USER;
+            sv.pass = NO_PASS;
+            MSG("Successful logout.")
+        }
+        else if (status == "NOK") MSG("User not logged in.")
+        else if (status == "UNR") MSG("Unknown user.")
+        else {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: status not reconizable.")
+            return -1;
+        }
+    }
+    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        STATUS("Can't comprehend server's reply: opcode not reconizable")
+        return -1;
     }
  
     return 0;
@@ -190,7 +229,7 @@ int cmd_unregister() {
 
     if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, sv.UDP.res->ai_addrlen) == -1) {
         MSG("Something went wrong.")
-        STATUS("Could not send unregister message")
+        STATUS("Could not send unregister message.")
         return -1;
     }
     STATUS("Unregister message sent.")
@@ -199,46 +238,60 @@ int cmd_unregister() {
     
     //sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
-    if(n == -1) {
+    if(n <= 0) {
         MSG("Something went wrong.")
-        STATUS("Could not receive unregister reply.")
+        if (n == -1) STATUS("Could not receive unregister reply.")
+        else STATUS("Unregister reply is empty.")
         return -1;
     }
 
-    sv.UDP.buffer[n]='\0';
-    sbuff = string(sv.UDP.buffer);
-    sbuff = sbuff.substr(0,sbuff.length()-1);
+    // Retirar o \n no final e colocar \0
+    sv.UDP.buffer[n-1]='\0';
 
-    STATUS_WA("Unregister reply received: %s", sbuff.c_str());
+    STATUS_WA("Unregister reply received: %s", sv.UDP.buffer);
 
-    if (sbuff.substr(0,4) != "UNR ") {
+    istringstream reply(string(sv.UDP.buffer));
+
+    string opcode;
+    if (!(reply >> opcode)) {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        STATUS("Can't comprehend server's reply: no opcode.")
         return -1;
     }
 
-    string args = sbuff.substr(4);
+    if (opcode == "RUR") {
+        string status;
 
-    if (args == "OK"){
-        sv.UID = NO_USER;
-        sv.pass = NO_PASS;
-        MSG("Unregister was successful.")
+        if (!(reply >> status)) {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: no status.")
+            return -1;
+        }
+        
+        if (status == "OK") {
+            sv.UID = NO_USER;
+            sv.pass = NO_PASS;
+            MSG("Unregister was successful. You're now logged out.")
+        }
+        else if (status == "NOK") MSG("User not logged in.")
+        else if (status == "UNR") {
+            sv.UID = NO_USER;
+            sv.pass = NO_PASS;
+            MSG("Your user is no longer registered. You will be logged out.")
+        } 
+        else {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: status not reconizable.")
+            return -1;
+        }
     }
-    
-    else if (args == "NOK") MSG("You are not logged in.")
-    else if (args =="UNR"){
-        sv.UID = NO_USER;
-        sv.pass = NO_PASS;
-        MSG("Your user is no longer registered. You will be logged out.")
-    } 
-    else if (args == "ERR") MSG("Wrong syntax.")
-
+    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        STATUS("Can't comprehend server's reply: opcode not reconizable")
         return -1;
     }
-
+    
     return 0;
 }
 
@@ -248,7 +301,7 @@ int cmd_exit() {
         return -1;
     }
 
-    STATUS("Exiting program...")
+    MSG("Exiting program...")
     sv.to_exit = 1;
 }
 
@@ -374,7 +427,7 @@ int cmd_open(istringstream &cmdstream) {
     }
 
     // Reply
-    size_t n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
     if (n == -1){
         MSG("Something went wrong.")
         STATUS("Could not receive open reply.")
@@ -438,19 +491,12 @@ int cmd_close(istringstream &cmdstream){
         return -1;
     }
 
-    if (AID.length() != 3) {
-        MSG("AID is not 3 characters long.")
-        return -1;
-    }
-
-    for (char c : AID) {
-        if (!isdigit(c)) {
-            MSG("AID is not numeric.")
+    if (!(is_valid_AID(AID))){
+            MSG("AID needs to be 3 digits long.")
             return -1;
-        }
     }
 
-    if (cmdstream.eof()) {
+    if (!cmdstream.eof()) {
         MSG("Too many arguments.")
         return -1;
     }
@@ -470,31 +516,45 @@ int cmd_close(istringstream &cmdstream){
 
     if (n <= 0){
         MSG("Something went wrong.")
-        STATUS("Could not receive close reply.")
-    }
-
-    sv.UDP.buffer[n] = '\0';
-    sbuff = string(sv.TCP.buffer);
-    sbuff = sbuff.substr(0, sbuff.length()-1 );
-
-    STATUS_WA("Close reply received: %s", sbuff.c_str());
-
-    if (sbuff.length() >= 4 && sbuff.substr(0,4) != "RCL "){
-        MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (n == -1) STATUS("Could not receive login reply.")
+        else STATUS("Could not receive close reply.")
         return -1;
     }
-    else if (sbuff == "ERR") MSG("Wrong syntax.")
-    else {
-        
+
+    sv.UDP.buffer[n-1] = '\0';
+
+    STATUS_WA("Close reply received: %s", sv.UDP.buffer);
+
+    istringstream reply(string(sv.UDP.buffer));
+
+    string opcode;
+    if (!(reply >> opcode)){
+        MSG("Something went wrong.")
+        STATUS("Can't comprehend server's reply: no opcode.")
+        return -1;
     }
-    
-    string args = sbuff.substr(4);
-    if (args == "OK") MSG("Close was successful.")
-    else if (args == "NLG") MSG("You are not logged in.")
-    else if (args == "EAU") MSG_WA("Auction %s does not exist.", AID)
-    else if (args == "EOW") MSG_WA("You are not the owner of %s auction.",AID)
-    else if (args == "END") MSG_WA("Auction %s has already finised.", AID)
+
+    if ( opcode == "RCL"){
+        string status;
+
+        if (!(reply >> status)) {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply: no status.")
+            return -1;
+        }
+
+        if (status == "OK") MSG("Close was successful.")
+        else if (status == "NLG") MSG("You are not logged in.")
+        else if (status == "EAU") MSG_WA("Auction %s does not exist.", AID.c_str())
+        else if (status == "EOW") MSG_WA("You are not the owner of %s auction.",AID.c_str())
+        else if (status == "END") MSG_WA("Auction %s has already finised.", AID.c_str())
+        else {
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply.")
+            return -1;
+        }
+    }
+    else if (sbuff == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
         STATUS("Can't comprehend server's reply.")
@@ -507,7 +567,7 @@ int cmd_close(istringstream &cmdstream){
 }
 
 int cmd_myauctions(){
-    
+    string opcode, status;
     if (sv.UID != NO_USER){
         MSG("You are already logged in.")
         return -1;
@@ -524,52 +584,65 @@ int cmd_myauctions(){
     STATUS("My auctions message sent.")
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
-    if(n==-1) {
+    if(n<=0) {
         MSG("Couldn't get your auctions.")
-        STATUS("Could not receive my auctions reply.")
+        if (n == -1) STATUS("Could not receive login reply")
+        else STATUS("Could not receive my auctions reply.")
         return -1;
     }
 
-    sv.UDP.buffer[n] = '\0';
-    sbuff = string(sv.UDP.buffer);
+    sv.UDP.buffer[n-1] = '\0';
 
-    if (sbuff.substr(0, 4) != "RMA ") {
+    STATUS_WA("Myauctions reply received: %s", sv.UDP.buffer)
+    istringstream reply(string(sv.UDP.buffer));
+
+    if (!(reply >> opcode)){
+        MSG("Something went wrong.")
+        STATUS("Myauctions reply is empty")
+        return -1;
+    }
+
+    if (opcode != "RMA") {
         MSG("Something went wrong.")
         STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
-    string args = sbuff.substr(4,7);
-    if (args == "OK ") {
-        int spaces=0;
-        sbuff = sbuff.substr(8,sbuff.length());
-        while (n==BUFFER_SIZE){
-            spaces = replaceEvenSpacesWithNewline(sbuff,spaces);
-            printf("%s",sbuff);
-            n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,
-                (struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
-            if (n==-1) {
-                MSG("Couldn't get your auctions.")
-                STATUS("Could not receive my auctions reply.")
+    if (!(reply >> status)){
+        MSG("Something went wrong.")
+        STATUS("Myauctions reply status is missing.")
+        return -1;
+    }
+
+    if (status == "OK"){
+        string AID, state;
+        while ((!(reply.eof()))){
+            if (!(reply >> AID)){
+                MSG("Something went wrong.")
+                STATUS("Couldn't extract AID.")
                 return -1;
             }
-            sv.UDP.buffer[n] = '\0';
-            sbuff = string(sv.UDP.buffer);
-        }
-        if (n<BUFFER_SIZE){
-            spaces = replaceEvenSpacesWithNewline(sbuff,spaces);
-            printf("%s",sbuff);
+            if (!(reply>>state)){
+                MSG("Something went wrong.")
+                STATUS("Auction doesn't have a state.")
+                return -1;
+            }
+            if (!(is_valid_AID(AID) && is_valid_state(state))){
+                    MSG("Something went wrong.")
+                    STATUS("Auction reply is wrongly formatted")
+                    return -1;
+            }
+            MSG_WA("%s %s", AID.c_str(), AID.c_str())
         }
     }
-    else if (args == "NOK") MSG("You have no ongoing auctions.")
-    else if (args == "NLG") MSG("You are not logged in.")
-    else if (args == "ERR") MSG("Wrong syntax.")
+    else if (status == "NOK") MSG("You have no ongoing auctions.")
+    else if (status == "NLG") MSG("You are not logged in.")
+    else if (status == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
         STATUS("Can't comprehend server's reply.")
         return -1;
     }
-
 }
 
 int processCommand(string full_cmd) {
@@ -588,7 +661,7 @@ int processCommand(string full_cmd) {
         }
     }
     else if (cmd == "logout") {
-        if (cmdstream.eof()) {
+        if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
         }
@@ -598,7 +671,7 @@ int processCommand(string full_cmd) {
     }
 
     else if (cmd == "unregister") {
-        if (cmdstream.eof()) {
+        if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
         }
@@ -608,7 +681,7 @@ int processCommand(string full_cmd) {
     }
 
     else if (cmd == "exit") {
-        if (cmdstream.eof()) {
+        if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
         }
@@ -648,7 +721,7 @@ int processCommand(string full_cmd) {
             return -1;
         }
         
-        if (cmd_close(cmdstream)==-1){
+        if (cmd_myauctions()==-1){
             STATUS("invalid myauctions")
             return -1;
         }
