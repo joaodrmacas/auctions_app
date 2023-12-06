@@ -3,7 +3,44 @@
 
 extern sys_var sv;
 
-int connect_tcp() {
+int start_udp() {
+    // UDP SOCKET
+    sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
+    if(sv.UDP.fd == -1) {
+        STATUS("Could not create socket [UDP]")
+        return -1;
+    }
+
+    memset(&sv.UDP.hints, 0, sizeof sv.UDP.hints);
+    sv.UDP.hints.ai_family=AF_INET; //IPv4
+    sv.UDP.hints.ai_socktype=SOCK_DGRAM; //UDP socket
+
+    sv.UDP.errcode=getaddrinfo( sv.ASIP.c_str(), sv.ASport.c_str() ,&sv.UDP.hints,&sv.UDP.res);
+    if(sv.UDP.errcode!=0) {
+        STATUS("Could not get address info [UDP]")
+        return -1;
+    }
+
+    sv.UDP.addrlen=sizeof(sv.UDP.addr);
+
+    return 0;
+}
+
+int end_udp() {
+    // Close UDP
+    if (close(sv.UDP.fd) == -1) {
+        MSG("Something went wrong.")
+        STATUS("Could not close [UDP]")
+        freeaddrinfo(sv.UDP.res);
+        return -1;
+    }
+
+    freeaddrinfo(sv.UDP.res);
+    return 0;
+
+}
+
+int start_tcp() {
     // TCP SOCKET
     sv.TCP.fd=socket(AF_INET,SOCK_STREAM,0); //TCP socket
     if(sv.TCP.fd == -1) {
@@ -33,7 +70,7 @@ int connect_tcp() {
     return 0;
 }
 
-int close_tcp() {
+int end_tcp() {
     // Close to TCP
     if (close(sv.TCP.fd) == -1) {
         MSG("Something went wrong.")
@@ -62,13 +99,33 @@ bool is_valid_state(string state){
 bool is_valid_fname(string fname){
     if (fname.length()>FILE_NAME_MAX_SIZE) return false;
     for (char c: fname){
-        if (!isalnum(c) || c!='-' || c!='_' || c!='.') return false;
+        if (!isalnum(c) && c!='-' && c!='_' && c!='.') return false;
     }
     return true;
 }
 
 bool is_valid_fsize(int fsize){
     return fsize < FILE_MAX_SIZE;
+}
+
+bool is_valid_date_time(const string& dateTimeString) {
+    // Define the regular expression pattern for the specified format
+    std::regex dateTimeRegex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$");
+
+    // Check if the string matches the pattern
+    if (std::regex_match(dateTimeString, dateTimeRegex)) {
+        // Extract individual components and check validity
+        int year, month, day, hour, minute, second;
+        sscanf(dateTimeString.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+
+        // Check validity of individual components
+        if (year >= 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
+            hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
+            return true; // Valid format and valid components
+        }
+    }
+
+    return false; // Invalid format or invalid components
 }
 
 int cmd_login(istringstream &cmdstream) {
@@ -380,8 +437,8 @@ int cmd_open(istringstream &cmdstream) {
         return -1;
     }
 
-    if (asset_fname.length() > FILE_NAME_MAX_SIZE) {
-        MSG("Asset filename is too long.")
+    if (!is_valid_fname(asset_fname)) {
+        MSG("Asset filename is not valid.")
         return -1;
     }
 
@@ -922,25 +979,36 @@ int cmd_show_asset(istringstream &cmdstream){
 
     if (n != sbuff.length()) {
         MSG("Something went wrong.")
-        STATUS("Could not send close request.")
+        STATUS("Could not send show asset request.")
         return -1;
     }
-    STATUS("Close message sent.")
+    STATUS("Show asset message sent.")
 
-    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    sbuff.clear();
 
-    if (n <= 0){
+    while((n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE)) > 0) {
+        sv.TCP.buffer[n] = '\0';
+        sbuff += string(sv.TCP.buffer);
+    }
+
+    if (n == -1) {
+            MSG("Something went wrong.")
+            if (n == -1) STATUS("Could not receive show asset reply.")
+            else STATUS("Show asset reply is empty.")
+            return -1;
+    }
+
+    if (sbuff.length() >= 1)
+        sbuff = sbuff.substr(0, sbuff.length()-1);
+    else {
         MSG("Something went wrong.")
-        if (n == -1) STATUS("Could not receive show asset reply.")
-        else STATUS("Show asset reply is empty.")
+        STATUS("Show asset reply is empty.")
         return -1;
     }
-
-    sv.TCP.buffer[n-1] = '\0';
-
-    STATUS_WA("Show asset reply received: %s", sv.TCP.buffer);
-
-    istringstream reply(string(sv.TCP.buffer));
+    
+    STATUS_WA("Show asset reply received: %s", sbuff.c_str());
+    
+    istringstream reply(sbuff);
 
     string opcode;
     if (!(reply >> opcode)){
@@ -1021,6 +1089,8 @@ int cmd_show_asset(istringstream &cmdstream){
         return -1;
     }
 
+    MSG("Asset file was successfully saved.")
+    
     return 0;
 }
 
@@ -1040,12 +1110,17 @@ int cmd_bid(istringstream &cmdstream){
     }
 
     if (!is_valid_AID(AID)){
-        MSG_WA("%s is not valid",AID)
+        MSG_WA("%s is not valid",AID.c_str())
         return -1;
     }
 
     if (!(cmdstream>>value)){
         MSG("Value is not a valid integer.")
+        return -1;
+    }
+
+    if (value > MAX_BID_VALUE) {
+        MSG("Value is too big (> 999999).")
         return -1;
     }
 
@@ -1129,7 +1204,7 @@ int cmd_show_records(istringstream &cmdstream){
     }
 
     if (!is_valid_AID(AID)){
-        MSG_WA("%s is not valid",AID)
+        MSG_WA("%s is not valid",AID.c_str())
         return -1;
     }
 
@@ -1177,11 +1252,90 @@ int cmd_show_records(istringstream &cmdstream){
             return -1;
         }
         if (status == "OK"){
-            string host_UID,auction_Name,asset_Fname,start_date_time;
+            string host_UID,auction_name,asset_fname,start_date_time;
             int start_value, timeactive;
+
+            if (!(reply >> host_UID)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no host UID.")
+                return -1;
+            }
+
+            if (host_UID.length() != UID_LEN){
+                MSG("Something went wrong.")
+                STATUS("Host UID is not a valid UID.")
+                return -1;
+            }
+
+            if (!(reply >> auction_name)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no auction name.")
+                return -1;
+            }
+
+            if (auction_name.length() > NAME_MAX_LEN){
+                MSG("Something went wrong.")
+                STATUS("Auction name is not valid.")
+                return -1;
+            }
+
+            if (!(reply >> asset_fname)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no asset file name.")
+                return -1;
+            }
+
+            if (!is_valid_fname(asset_fname)){
+                MSG("Something went wrong.")
+                STATUS("Auction name is not valid.")
+                return -1;
+            }
+
+            if (!(reply >> start_value)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no start value or start \\
+                        value is not an int.")
+                return -1;
+            }
+
+            if (start_value > MAX_START_VALUE){
+                MSG("Something went wrong.")
+                STATUS("Auction name is not valid.")
+                return -1;
+            }
+            
+            if (!(reply >> start_date_time)){
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no start date and time")
+                return -1;
+            }
+
+            if (!is_valid_date_time(start_date_time)){
+                MSG("Something went wrong.")
+                STATUS("Start date_time is not valid.")
+                return -1;
+            }
+
+            if (!(reply >> start_value)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no start value or start \\
+                        value is not an int.")
+                return -1;
+            }
+
+            
+
+            
+
+            if (!cmdstream.eof()) {
+                MSG("Too many arguments.")
+                return -1;
+            }
+
+            
             
         }
-        else if (status == "NOK") MSG_WA("Auction %s does not exist.", AID)
+        else if (status == "NOK") MSG_WA("Auction %s does not exist.", AID.c_str())
         else {
             MSG("Something went wrong.")
             STATUS("Can't comprehend server's reply.")
@@ -1210,11 +1364,17 @@ int processCommand(string full_cmd) {
     }
 
     if (cmd=="login") {
+        start_udp();
+
         if (cmd_login(cmdstream) == -1){
             STATUS("invalid login.")
         }
+
+        end_udp();
     }
     else if (cmd == "logout") {
+        start_udp();
+
         if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
@@ -1222,9 +1382,13 @@ int processCommand(string full_cmd) {
         if (cmd_logout()==-1){
             STATUS("invalid logout")
         }
+
+        end_udp();
     }
 
     else if (cmd == "unregister") {
+        start_udp();
+        
         if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
@@ -1232,6 +1396,8 @@ int processCommand(string full_cmd) {
         if (cmd_unregister()==-1){
             STATUS("invalid unregister")
         }
+
+        end_udp();
     }
 
     else if (cmd == "exit") {
@@ -1245,25 +1411,27 @@ int processCommand(string full_cmd) {
     }
 
     else if (cmd == "open") {
-        connect_tcp();
+        start_tcp();
         
         if (cmd_open(cmdstream)==-1){
             STATUS("invalid open")
         }
 
-        close_tcp();
+        end_tcp();
     }
 
     else if (cmd == "close") {
-        connect_tcp();
+        start_tcp();
 
         if (cmd_close(cmdstream)==-1){
             STATUS("invalid close")
         }
 
-        close_tcp();
+        end_tcp();
     }
     else if (cmd == "myauctions" || cmd == "ma") {
+        start_udp();
+
         if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
@@ -1273,8 +1441,12 @@ int processCommand(string full_cmd) {
             STATUS("invalid myauctions")
             return -1;
         }
+
+        end_udp();
     }
     else if (cmd == "mybids" || cmd == "mb") {
+        start_udp();
+
         if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
@@ -1283,8 +1455,12 @@ int processCommand(string full_cmd) {
             STATUS("invalid mybids")
             return -1;
         }
+
+        end_udp();
     }
     else if (cmd == "list" || cmd == "l") {
+        start_udp();
+
         if (!cmdstream.eof()) {
             MSG("Too many arguments.")
             return -1;
@@ -1293,24 +1469,26 @@ int processCommand(string full_cmd) {
             STATUS("invalid list")
             return -1;
         }
+
+        end_udp();
     }
     else if (cmd == "show_asset" || cmd == "sa") {
-        connect_tcp();
+        start_tcp();
 
         if (cmd_show_asset(cmdstream)==-1){
             STATUS("invalid show_asset")
         }
 
-        close_tcp();
+        end_tcp();
     }
     else if (cmd == "bid" || cmd == "b") {
-        connect_tcp();
+        start_tcp();
 
         if (cmd_bid(cmdstream) == -1) {
             STATUS("invalid bid")
         }
 
-        close_tcp()
+        end_tcp();
     }
     // else if (cmd == "show_records" || cmd == "sr") {
     //     cmd_show_records(cmdstream);

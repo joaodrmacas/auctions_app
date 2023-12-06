@@ -16,7 +16,7 @@ typedef struct protocol {
     socklen_t addrlen;
     struct addrinfo hints,*res;
     struct sockaddr_in addr;
-    char buffer[6011];
+    char buffer[BUFFER_SIZE];
 } protocol;
 
 typedef struct __sys_var__ {

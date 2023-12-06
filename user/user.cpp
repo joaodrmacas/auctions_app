@@ -66,31 +66,11 @@ int main(int argc, char** argv) {
     memset(sv.UDP.buffer,0,129);
     memset(sv.TCP.buffer,0,129);
 
-    // FIXME all socket errors treated as STATUS (no exit) 
-    // UDP SOCKET
-    sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
-    if(sv.UDP.fd == -1) STATUS("Could not create socket [UDP]")
-
-    memset(&sv.UDP.hints, 0, sizeof sv.UDP.hints);
-    sv.UDP.hints.ai_family=AF_INET; //IPv4
-    sv.UDP.hints.ai_socktype=SOCK_DGRAM; //UDP socket
-
-    sv.UDP.errcode=getaddrinfo( sv.ASIP.c_str(), sv.ASport.c_str() ,&sv.UDP.hints,&sv.UDP.res);
-    if(sv.UDP.errcode!=0) {
-        STATUS("Could not get address info [UDP]")
-        exit(1);
-    }
-
-    sv.UDP.addrlen=sizeof(sv.UDP.addr);
-
     while(!sv.to_exit){
         cout << "> ";
         getline(cin, cmd);
         processCommand(cmd);    
     }
-
-    close(sv.UDP.fd);
-    freeaddrinfo(sv.UDP.res);
 
     return 0;
 }

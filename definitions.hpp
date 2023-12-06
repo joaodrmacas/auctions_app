@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <regex>
 
 using namespace std;
 
@@ -25,6 +26,7 @@ using namespace std;
 #define AID_SIZE 3
 #define NAME_MAX_LEN 10
 #define MAX_START_VALUE 999999
+#define MAX_BID_VALUE 999999
 #define MAX_TIME_ACTIVE 99999
 #define UID_LEN 6
 #define PASSWORD_LEN 8
@@ -54,10 +56,5 @@ typedef struct bid {
     {printf(format "\n", __VA_ARGS__ );} \
 
 #define BUFFER_SIZE 6010
-
-/*
--> 512 + 1 (1 for the case where the buffer receives 512 bytes and the last byte has to be'\0')
--> 512 bytes because a file name can have 255 caracteres (255 bytes) in UNIX
-*/
 
 #endif 
