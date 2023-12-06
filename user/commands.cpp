@@ -1316,7 +1316,7 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
 
-            if (!(reply >> start_value)) {
+            if (!(reply >> timeactive)) {
                 MSG("Something went wrong.")
                 STATUS("Can't comprehend server's reply: no start value or start \\
                         value is not an int.")
