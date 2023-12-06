@@ -22,6 +22,17 @@ using namespace std;
 
 #define FILE_NAME_MAX_SIZE 24
 #define FILE_MAX_SIZE 10000000
+#define AID_SIZE 3
+#define NAME_MAX_LEN 10
+#define MAX_START_VALUE 999999
+#define MAX_TIME_ACTIVE 99999
+#define UID_LEN 6
+#define PASSWORD_LEN 8
+
+typedef struct bid {
+    string UID,date_time;
+    int value, sec_time;
+} bid;
 
 #define ERR(...)                                                        \
     {                                                                   \
@@ -40,7 +51,7 @@ using namespace std;
     {printf("%s\n", msg);}               \
 
 #define MSG_WA(format, ...)         \
-    {printf(format, __VA_ARGS__ );} \
+    {printf(format "\n", __VA_ARGS__ );} \
 
 #define BUFFER_SIZE 6010
 

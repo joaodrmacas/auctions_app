@@ -15,7 +15,7 @@ int is_valid_port (string port) {
     return port_int >= 0 && port_int <= 65535;
 }
 
-void get_args(int argc, char **argv, string &ASIP, string &ASport) {
+void get_args(int argc, char **argv) {
     switch (argc) {
         case 1:
             break;
@@ -24,12 +24,12 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
             if (strlen(argv[1]) != 2 || argv[1][0] != '-') ERR("Invalid arguments")
             switch (argv[1][1]) {
                 case 'n':
-                    ASIP=argv[2];
-                    if (!is_valid_ip(ASIP)) ERR("Invalid IP")
+                    sv.ASIP=argv[2];
+                    if (!is_valid_ip(sv.ASIP)) ERR("Invalid IP")
                     break;
                 case 'p':
-                    ASport=argv[2];
-                    if (!is_valid_port(ASport)) ERR("Invalid port")
+                    sv.ASport=argv[2];
+                    if (!is_valid_port(sv.ASport)) ERR("Invalid port")
                     break;
                 default:
                     ERR("Invalid arguments")
@@ -39,12 +39,12 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
                 if (strlen(argv[3]) != 2 || argv[3][0] != '-' || argv[1][1]==argv[3][1]) ERR("Invalid arguments")
                 switch (argv[1][1]) {
                     case 'n':
-                        ASIP=argv[4];
-                        if (!is_valid_ip(ASIP)) ERR("Invalid IP")
+                        sv.ASIP=argv[4];
+                        if (!is_valid_ip(sv.ASIP)) ERR("Invalid IP")
                         break;
                     case 'p':
-                        ASport=argv[4];
-                        if (!is_valid_port(ASport)) ERR("Invalid port")
+                        sv.ASport=argv[4];
+                        if (!is_valid_port(sv.ASport)) ERR("Invalid port")
                         break;
                     default:
                         ERR("Invalid arguments")
@@ -60,9 +60,8 @@ void get_args(int argc, char **argv, string &ASIP, string &ASport) {
 int main(int argc, char** argv) {
 
     string cmd;
-    string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
 
-    get_args(argc, argv, ASIP, ASport);
+    get_args(argc, argv);
     
     memset(sv.UDP.buffer,0,129);
     memset(sv.TCP.buffer,0,129);
@@ -76,45 +75,22 @@ int main(int argc, char** argv) {
     sv.UDP.hints.ai_family=AF_INET; //IPv4
     sv.UDP.hints.ai_socktype=SOCK_DGRAM; //UDP socket
 
-    sv.UDP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&sv.UDP.hints,&sv.UDP.res);
+    sv.UDP.errcode=getaddrinfo( sv.ASIP.c_str(), sv.ASport.c_str() ,&sv.UDP.hints,&sv.UDP.res);
     if(sv.UDP.errcode!=0) {
         STATUS("Could not get address info [UDP]")
         exit(1);
     }
 
-    // TCP SOCKET
-    sv.TCP.fd=socket(AF_INET,SOCK_STREAM,0); //TCP socket
-    if(sv.TCP.fd == -1) {
-        STATUS("Could not create socket [TCP]")
-        freeaddrinfo(sv.UDP.res);
-        exit(1);
-    }
-
-    memset(&sv.TCP.hints, 0, sizeof sv.TCP.hints);
-    sv.TCP.hints.ai_family=AF_INET; //IPv4
-    sv.TCP.hints.ai_socktype=SOCK_STREAM; //TCP socket
-
-    sv.TCP.errcode=getaddrinfo( ASIP.c_str(), ASport.c_str() ,&sv.TCP.hints,&sv.TCP.res);
-    if(sv.TCP.errcode!=0) {
-        STATUS("Could not get address info [TCP]")
-        freeaddrinfo(sv.UDP.res);
-        close(sv.UDP.fd);
-        exit(1);
-    }
-
     sv.UDP.addrlen=sizeof(sv.UDP.addr);
-    sv.TCP.addrlen=sizeof(sv.TCP.addr);
 
     while(!sv.to_exit){
         cout << "> ";
         getline(cin, cmd);
-        processCommand(cmd);
+        processCommand(cmd);    
     }
 
     close(sv.UDP.fd);
     freeaddrinfo(sv.UDP.res);
-    
-    freeaddrinfo(sv.TCP.res);
 
     return 0;
 }

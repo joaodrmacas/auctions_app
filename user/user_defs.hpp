@@ -20,6 +20,7 @@ typedef struct protocol {
 } protocol;
 
 typedef struct __sys_var__ {
+    string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
     protocol UDP, TCP;
     string UID = NO_USER;
     string pass = NO_PASS;
