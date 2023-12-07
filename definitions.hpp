@@ -30,6 +30,7 @@ using namespace std;
 #define MAX_TIME_ACTIVE 99999
 #define UID_LEN 6
 #define PASSWORD_LEN 8
+#define MAX_BIDS_SHOWN 50
 
 typedef struct bid {
     string UID,date_time;
