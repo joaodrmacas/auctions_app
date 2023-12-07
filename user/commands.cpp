@@ -108,9 +108,9 @@ bool is_valid_fsize(int fsize){
     return fsize < FILE_MAX_SIZE;
 }
 
-bool is_valid_date_time(const string& dateTimeString) {
+bool is_valid_date_time(string dateTimeString) {
     // Define the regular expression pattern for the specified format
-    std::regex dateTimeRegex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$");
+    regex dateTimeRegex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$");
 
     // Check if the string matches the pattern
     if (std::regex_match(dateTimeString, dateTimeRegex)) {
@@ -126,6 +126,10 @@ bool is_valid_date_time(const string& dateTimeString) {
     }
 
     return false; // Invalid format or invalid components
+}
+
+bool is_valid_timeactive(int timeactive){
+    return timeactive<MAX_TIME_ACTIVE && timeactive>0;
 }
 
 int cmd_login(istringstream &cmdstream) {
@@ -462,14 +466,8 @@ int cmd_open(istringstream &cmdstream) {
         return -1;
     }
 
-    if (timeactive > MAX_TIME_ACTIVE) {
-        MSG("Timeactive is too big (> 99999).")
-        return -1;
-    }
-
-    if (timeactive < 0) {
-        MSG("Timeactive can't be negative.")
-        return -1;
+    if (!is_valid_timeactive(timeactive)){
+        MSG_WA("Timeactive is not valid. (Max time is %d)", MAX_TIME_ACTIVE);
     }
 
     if (!cmdstream.eof()) {
@@ -1293,8 +1291,7 @@ int cmd_show_records(istringstream &cmdstream){
 
             if (!(reply >> start_value)) {
                 MSG("Something went wrong.")
-                STATUS("Can't comprehend server's reply: no start value or start \\
-                        value is not an int.")
+                STATUS("Can't comprehend server's reply: no start value or start value is not an int.")
                 return -1;
             }
 
@@ -1318,19 +1315,17 @@ int cmd_show_records(istringstream &cmdstream){
 
             if (!(reply >> timeactive)) {
                 MSG("Something went wrong.")
-                STATUS("Can't comprehend server's reply: no start value or start \\
-                        value is not an int.")
+                STATUS("Can't comprehend server's reply: no start value or time active is not an int.")
+                return -1;
+            }
+
+            if (!is_valid_timeactive(timeactive)){
+                MSG("Something went wrong.")
+                STATUS("Time active is not valid.")
                 return -1;
             }
 
             
-
-            
-
-            if (!cmdstream.eof()) {
-                MSG("Too many arguments.")
-                return -1;
-            }
 
             
             
