@@ -1,5 +1,6 @@
 #include "user_defs.hpp"
 #include "commands.hpp"
+#include "validations.hpp"
 
 extern sys_var sv;
 
@@ -83,122 +84,6 @@ int end_tcp() {
     return 0;
 }
 
-bool is_valid_AID(string AID){
-    if (AID.length != AID_SIZE){
-        return false;
-    }
-
-    for (char c : AID) {
-        if (!isdigit(c)) {
-            return false;  // If any character is not a digit, the string is not numeric
-        }
-    }
-    return true;
-}
-
-bool is_valid_state(string state){
-    return state == "0" || state == "1";
-}
-
-bool is_valid_fname(string fname){
-    if (fname.length()>FILE_NAME_MAX_SIZE) return false;
-    for (char c: fname){
-        if (!isalnum(c) && c!='-' && c!='_' && c!='.') return false;
-    }
-    return true;
-}
-
-bool is_valid_fsize(int fsize){
-    return fsize < FILE_MAX_SIZE;
-}
-
-bool is_valid_date_time(string dateTimeString) {
-    // Define the regular expression pattern for the specified format
-    regex dateTimeRegex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$");
-
-    // Check if the string matches the pattern
-    if (std::regex_match(dateTimeString, dateTimeRegex)) {
-        // Extract individual components and check validity
-        int year, month, day, hour, minute, second;
-        sscanf(dateTimeString.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
-
-        // Check validity of individual components
-        if (year >= 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
-            hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
-            return true; // Valid format and valid components
-        }
-    }
-
-    return false; // Invalid format or invalid components
-}
-
-bool is_valid_UID(string UID){
-    for (char c : UID) {
-        if (!isdigit(c)) {
-            MSG("UID should be only numeric.")
-            return false;
-        }
-    }
-    if (UID.length() != UID_LEN){
-        MSG("UID should be 6 digits")
-        return false
-    }
-
-    return true
-}
-
-bool is_valid_timeactive(int timeactive){
-    return timeactive<MAX_TIME_ACTIVE && timeactive>0;
-}
-
-bool is_valid_pass(string pass){
-    if (pass.length() != PASSWORD_LEN){
-        MSG("Password should be 8 characters long.")
-        return false;
-    }
-    
-    for (char c : pass) {
-        if (!isalnum(c)) {
-            MSG("Password should be alphanumeric.")
-            return false;
-        }
-    }
-    
-
-    return true;
-}
-
-bool is_valid_auction_name(string name){
-    if (name.length() > NAME_MAX_LEN) {
-        MSG("Auction name is too long.")
-        return false;
-    }
-
-    for (char c : name) {
-        if (!isalnum(c)) {
-            MSG("Auction name should be alphanumeric.")
-            return false;
-        }
-    }
-
-    return true;
-
-}
-
-bool is_valid_value(int value){
-    if (start_value > MAX_START_VALUE) {
-        MSG("Start_value is too big (> 999999).")
-        return false;
-    }
-
-    if (start_value < 0) {
-        MSG("Start_value can't be negative.")
-        return false;
-    }
-
-    return true;
-}
-
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
 
@@ -213,14 +98,20 @@ int cmd_login(istringstream &cmdstream) {
         return -1;
     }
 
-    if (!is_valid_UID(UID)) return -1;
+    if (!is_valid_UID(UID)) {
+        MSG("UID is not correctly formatted.")
+        return -1;
+    }
 
     if (!(cmdstream >> pass)){
         MSG("Password is not specified.")
         return -1;
     }
 
-    if (!is_valid_pass(pass)) return -1;
+    if (!is_valid_pass(pass)) {
+        MSG("Password is not correctly formatted.")
+        return -1;
+    }
 
     if (!cmdstream.eof()) {
         MSG("Too many arguments.")
@@ -472,7 +363,10 @@ int cmd_open(istringstream &cmdstream) {
         return -1;
     }
 
-    if (!is_valid_auction_name(name)) return -1;
+    if (!is_valid_auction_name(name)) {
+        MSG("Auction name is not correctly formatted")
+        return -1;
+    }
 
     if ( !(cmdstream >> asset_fname) ){
         MSG("Asset filename is not specified.")
@@ -489,7 +383,10 @@ int cmd_open(istringstream &cmdstream) {
         return -1;
     }
 
-    if (!is_valid_value()) return -1;
+    if (!is_valid_bid_value(start_value)){
+        MSG("Start_value is not valid")
+        return -1;
+    }
 
     if ( !(cmdstream >> timeactive)){
         MSG("Timeactive is not a valid integer.")
@@ -522,7 +419,7 @@ int cmd_open(istringstream &cmdstream) {
     if (fasset.is_open()) {
         int size = fasset.tellg();
 
-        if (size > FILE_MAX_SIZE) {
+        if (!is_valid_fsize(size)) {
             MSG_WA("Asset file is too big (> %d) bytes", FILE_MAX_SIZE)
             return -1;
         }
@@ -597,7 +494,7 @@ int cmd_open(istringstream &cmdstream) {
                 return -1;
             }
             
-            if (!is_valid_AID()) {
+            if (!is_valid_AID(AID)) {
                 MSG("Something went wrong.")
                 STATUS("Can't comprehend server's reply: AID not valid")
                 return -1;
@@ -773,14 +670,21 @@ int cmd_myauctions(){
                     STATUS("Couldn't extract AID.")
                     return -1;
                 }
+
+                if (!is_valid_AID(AID)){
+                    MSG("Something went wrong.")
+                    STATUS("Cant' comprehend server's reply: AID is not valid")
+                    return -1;
+                }
+
                 if (!(reply>>state)){
                     MSG("Something went wrong.")
                     STATUS("Auction doesn't have a state.")
                     return -1;
                 }
-                if (!(is_valid_AID(AID) && is_valid_state(state))){
+                if (!is_valid_state(state)){
                     MSG("Something went wrong.")
-                    STATUS("Auction reply is wrongly formatted.")
+                    STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
                 MSG_WA("%s %s", AID.c_str(), state.c_str())
@@ -859,14 +763,20 @@ int cmd_mybids(){
                     STATUS("Couldn't extract AID.")
                     return -1;
                 }
+
+                if (!is_valid_AID(AID)){
+                    MSG("Something went wrong.")
+                    STATUS("Cant' comprehend server's reply: AID is not valid")
+                    return -1;
+                }
                 if (!(reply>>state)){
                     MSG("Something went wrong.")
                     STATUS("Auction doesn't have a state.")
                     return -1;
                 }
-                if (!(is_valid_AID(AID) && is_valid_state(state))){
+                if (!is_valid_state(state)){
                     MSG("Something went wrong.")
-                    STATUS("Auction reply is wrongly formatted")
+                    STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
                 MSG_WA("%s %s", AID.c_str(), state.c_str())
@@ -943,14 +853,21 @@ int cmd_list(){
                     STATUS("Couldn't extract AID.")
                     return -1;
                 }
+
+                if (!is_valid_AID(AID)){
+                    MSG("Something went wrong.")
+                    STATUS("Cant' comprehend server's reply: AID is not valid")
+                    return -1;
+                }
+
                 if (!(reply>>state)){
                     MSG("Something went wrong.")
                     STATUS("Auction doesn't have a state.")
                     return -1;
                 }
-                if (!(is_valid_AID(AID) && is_valid_state(state))){
+                if (!is_valid_state(state)){
                     MSG("Something went wrong.")
-                    STATUS("Auction reply is wrongly formatted")
+                    STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
                 MSG_WA("%s %s", AID.c_str(), state.c_str())
@@ -988,8 +905,8 @@ int cmd_show_asset(istringstream &cmdstream){
     }
 
     if (!(is_valid_AID(AID))){
-            MSG("AID is not correctly formatted.")
-            return -1;
+        MSG("AID is not correctly formatted.")
+        return -1;
     }
 
     if (!cmdstream.eof()) {
@@ -1142,7 +1059,7 @@ int cmd_bid(istringstream &cmdstream){
         return -1;
     }
 
-    if (value > MAX_BID_VALUE) {
+    if (!is_valid_bid_value(value)) {
         MSG("Value is too big (> 999999).")
         return -1;
     }
@@ -1351,14 +1268,11 @@ int cmd_show_records(istringstream &cmdstream){
             }
 
             //se tiverem sido feitas bids comeca a ler
-            int num_bids = 0;
+            int num_bids;
             bid bids[MAX_BIDS_SHOWN];
             memset(bids,0,MAX_BIDS_SHOWN);
-            string temp_str;
-            while (!reply.eof()){
-                num_bids++;
-
-                if (bids > MAX_BIDS_SHOWN){
+            for (num_bids = 0 ;; num_bids++) {
+                if (num_bids > MAX_BIDS_SHOWN){
                     MSG("Something went wrong.")
                     STATUS("The number of bids exceeds the max number of bids to show.")
                     return -1;
@@ -1366,21 +1280,23 @@ int cmd_show_records(istringstream &cmdstream){
 
                 bid temp_bid = {};
 
-                if (!(reply >> temp_str)) {
+                if (!(reply >> sbuff)) {
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: B is not shown")
+                    STATUS("Can't comprehend server's reply: no B.")
                     return -1;
                 }
 
-                if (temp_str != "B"){
+                if (sbuff == "E") break;
+
+                if (sbuff != "B"){
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: B is not shown")
+                    STATUS("Can't comprehend server's reply: shoul")
                     return -1;
                 }
 
                 if (!(reply >> temp_bid.UID)) {
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: UID is not shown")
+                    STATUS("Can't comprehend server's reply: no UID.")
                     return -1;
                 }
 
@@ -1389,13 +1305,46 @@ int cmd_show_records(istringstream &cmdstream){
                     STATUS("Can't comprehend server's reply: UID is not valid")
                     return -1;
                 }
-
-
                 
+                if (!(reply >> temp_bid.value)) {
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: no value.")
+                    return -1;
+                }
 
+                if (!is_valid_bid_value(temp_bid.value)){
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: value is too big.")
+                    return -1;
+                }
+
+                if (!is_valid_date_time(temp_bid.date_time)){
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: date_time is not valid")
+                    return -1;
+                }
+
+                string bid_time;
+                if (!(reply >> bid_time)) {
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: no end time.")
+                    return -1;
+                }
+
+                if (is_valid_bid_time(bid_time)){
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: date_time is not valid")
+                    return -1;
+                }
+                
+                temp_bid.time = stoi(bid_time);
             }
-            
 
+            if (!(reply >> sbuff)) {
+                MSG("Something went wrong.")
+                STATUS("Can't comprehend server's reply: no E.")
+                return -1;
+            }
             
             
         }
