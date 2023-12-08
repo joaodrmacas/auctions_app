@@ -4,7 +4,10 @@
 #define __VALIDATIONS_HPP__
 
 
-bool isValidDateFormat(string input);
+bool is_valid_port(string port);
+bool is_valid_ip(string ip);
+
+bool is_valid_date_time(string input);
 bool is_valid_AID(string AID);
 bool is_valid_state(string state);
 bool is_valid_fname(string fname);

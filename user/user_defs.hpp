@@ -2,11 +2,11 @@
 #define __USER_DEFS_HPP__
 
 #include "../definitions.hpp"
+#include "../validations.hpp"
 
 #define PUBLIC_PORT "58011"
 #define PUBLIC_IP "tejo.tecnico.ulisboa.pt"
 #define MY_IP "localhost"
-#define PORT "58036"
 
 #define NO_USER ""
 #define NO_PASS ""

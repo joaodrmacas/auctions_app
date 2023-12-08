@@ -1,3 +1,5 @@
 
 *.json
-a.out
+*.out
+*.o
+user

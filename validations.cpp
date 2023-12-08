@@ -1,6 +1,22 @@
 #include "definitions.hpp"
 
 
+bool is_valid_port (string port) {
+    for (char c : port) {
+        if (!isdigit(c)) {
+            return false;
+        }
+    }
+    int port_int = atoi(port.c_str());
+    return port_int >= 0 && port_int <= 65535;
+}
+
+bool is_valid_ip (string ip) {
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr));
+    return result != 0;
+}
+
 bool is_valid_AID(string AID){
     if (AID.length() != AID_SIZE){
         STATUS("AID is not size 3")
@@ -44,27 +60,14 @@ bool is_valid_fsize(int fsize){
     return true;
 }
 
-bool isValidDateFormat(string input) {
+bool is_valid_date_time(string input) {
     std::istringstream ss(input);
     int year, month, day, hour, minute, second;
-    char dash1, dash2, space1, colon1, colon2;
+    char dash1, dash2, colon1, colon2;
 
     if (input.length() == DATE_TIME_LEN){
         STATUS("Date_time is not 19 characters.")
     }
-
-    // Attempt to read the values with the specified format
-    // if (!(ss >> year >> dash1 >> month >> dash2 >> day >> hour >> colon1 >> minute >> colon2 >> second) ||
-    //     (dash1 != '-' || dash2 != '-' || colon1 != ':' || colon2 != ':') ||
-    //     (month < 1 || month > 12) ||
-    //     (day < 1 || day > 31) ||
-    //     (hour < 0 || hour > 23) ||
-    //     (minute < 0 || minute > 59) ||
-    //     (second < 0 || second > 59) ||
-    //     !ss.eof()) {
-
-    //     return false;  // Invalid format or invalid values
-    // }
 
     if (!(ss >> year >> dash1 >> month >> dash2 >> day >> hour >> colon1 >> minute >> colon2 >> second)){
         STATUS("Couldnt extract date in the correct form: ")

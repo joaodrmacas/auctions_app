@@ -1,6 +1,6 @@
 #include "user_defs.hpp"
 #include "commands.hpp"
-#include "validations.hpp"
+#include "../validations.hpp"
 
 extern sys_var sv;
 
@@ -260,7 +260,6 @@ int cmd_logout() {
 }
 
 int cmd_unregister() {
-    char status[3];
 
     if (sv.UID == NO_USER) {
         MSG("You are not logged in.")
@@ -1005,12 +1004,15 @@ int cmd_show_asset(istringstream &cmdstream){
             if (!outputFile.is_open()) {
                 MSG("Something went wrong.")
                 STATUS("Error opening the file.")
-                return 1;
+                outputFile.close();
+                return -1;
             }
 
             if(!(outputFile << fdata)){
                 MSG("Something went wrong.")
                 STATUS("Error writing to file.")
+                outputFile.close();
+                return -1;
             }
 
             outputFile.close();
@@ -1237,7 +1239,7 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
 
-            if (start_value > MAX_START_VALUE){
+            if (!is_valid_bid_value(start_value)){
                 MSG("Something went wrong.")
                 STATUS("Auction name is not valid.")
                 return -1;

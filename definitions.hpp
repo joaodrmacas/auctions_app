@@ -17,12 +17,13 @@
 #include <regex>
 #include <chrono>
 #include <iomanip>
-#include <sstream>
 
 using namespace std;
 
 #define DEBUG 1
 #define STATUS_ON 1
+
+#define PORT "58036"
 
 #define BUFFER_SIZE 6010
 #define FILE_NAME_MAX_SIZE 24
