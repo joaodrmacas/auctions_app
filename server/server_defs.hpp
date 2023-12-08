@@ -16,8 +16,6 @@ namespace fs = filesystem;
 typedef struct __sys_var__ {
     string ASport=PORT;
     bool verbose_mode = false;
-    string users_path = USERS_DIR_PATH;
-    string auctions_path = AUCTIONS_DIR_PATH;
     //protocol UDP, TCP;
 } sys_var;
 
