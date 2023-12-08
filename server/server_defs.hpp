@@ -7,6 +7,8 @@
 
 #define USERS_DIR_PATH "USERS";
 #define AUCTIONS_DIR_PATH "AUCTIONS"
+#define HOSTED_DIR_PATH "HOSTED"
+#define BIDDED_DIR_PATH "BIDDED"
 
 namespace fs = filesystem;
 
