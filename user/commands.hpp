@@ -1,6 +1,9 @@
 #ifndef __COMMANDS_HPP__
 #define __COMMANDS_HPP__
 
+#include "user_defs.hpp"
+#include "../validations.hpp"
+
 int connect_tcp();
 int close_tcp();
 

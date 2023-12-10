@@ -1,6 +1,4 @@
-#include "user_defs.hpp"
 #include "commands.hpp"
-#include "../validations.hpp"
 
 extern sys_var sv;
 
@@ -176,10 +174,10 @@ int cmd_login(istringstream &cmdstream) {
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -249,10 +247,10 @@ int cmd_logout() {
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply: opcode not reconizable")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
  
@@ -326,10 +324,10 @@ int cmd_unregister() {
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply: opcode not reconizable")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
     
@@ -401,19 +399,12 @@ int cmd_open(istringstream &cmdstream) {
         return -1;
     }
 
-    // Message
+    // Request
     string sbuff = "OPA " + sv.UID + " " + sv.pass + " " + name + " " 
                     + to_string(start_value) + " " + to_string(timeactive) + " "
                     + asset_fname + " ";
-
-    size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
-    if (n != sbuff.length()) {
-        MSG("Something went wrong.")
-        STATUS("Could not send open request")
-        return -1;
-    }
     
-    ifstream fasset(asset_fname, ios::ate);
+    ifstream fasset(asset_fname, ios::in | ios::ate);
 
     if (fasset.is_open()) {
         int size = fasset.tellg();
@@ -422,38 +413,74 @@ int cmd_open(istringstream &cmdstream) {
             MSG_WA("Asset file is too big (> %d) bytes", FILE_MAX_SIZE)
             return -1;
         }
+        
+        sbuff += to_string(size) + " ";
 
         fasset.seekg(0, ios::beg);
         
-        sbuff = to_string(size) + " ";
-        n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
-        if (n != sbuff.length()) {
-            MSG("Could not send open message")
+        // read BUFFER_SIZE bytes of file to TCP.buffer and send it
+        fasset.read(sv.TCP.buffer, BUFFER_SIZE - sbuff.length());
+        if ((fasset.fail() || fasset.bad()) && !fasset.eof()) {
+            MSG("Something went wrong.")
+            STATUS("Could not read asset file")
             return -1;
         }
 
-        while (size > 0) {
-            fasset.read(sv.TCP.buffer, BUFFER_SIZE);
-            n = write(sv.TCP.fd, sv.TCP.buffer, fasset.gcount());
-            if (n != fasset.gcount()) {
-                MSG("Could not send open message")
+        sv.TCP.buffer[fasset.gcount()] = '\0';
+        sbuff += sv.TCP.buffer;
+
+        if (!fasset.eof()) {
+            while(!fasset.eof()) {
+                size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+                if (n != sbuff.length()) {
+                    MSG("Something went wrong.")
+                    STATUS("Could not send open message")
+                    return -1;
+                }
+
+                fasset.read(sv.TCP.buffer, BUFFER_SIZE);
+                if ((fasset.fail() || fasset.bad()) && !fasset.eof()) {
+                    MSG("Something went wrong.")
+                    STATUS("Could not read asset file")
+                    return -1;
+                }
+                MSG("Something went wrong.")
+                STATUS("Could not read asset file")
                 return -1;
             }
-            size -= fasset.gcount();
+
+            sv.TCP.buffer[fasset.gcount()] = '\0';
+            sbuff = sv.TCP.buffer;
         }
 
-        if (write(sv.TCP.fd, "\n", 1) != 1) {
-            MSG("Could not send open message")
+        if (sbuff.length() < BUFFER_SIZE) {
+            sbuff += "\n";
+        }
+
+        size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+        if (n != sbuff.length()) {
+            MSG("Something went wrong.")
+            STATUS("Could not send open message")
             return -1;
+        }
+
+        if (sbuff.length() == BUFFER_SIZE) {
+            sbuff = "\n";
+            n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+            if (n != sbuff.length()) {
+                MSG("Something went wrong.")
+                STATUS("Could not send open message")
+                return -1;
+            }
         }
     }
     else {
-        MSG("Could not open asset file")
+        MSG("Could not open asset file.")
         return -1;
     }
 
     // Reply
-    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    size_t n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
     if(n <= 0) {
         MSG("Something went wrong.")
         if (n == -1) STATUS("Could not receive open reply.")
@@ -505,7 +532,7 @@ int cmd_open(istringstream &cmdstream) {
                 return -1;
             }
 
-            MSG("Auction was successfully started.")
+            MSG_WA("Auction %s was successfully started.", AID.c_str())
         }
         else if (status == "NOK") MSG("Auction can't be started.")
         else if (status == "NLG") {
@@ -518,10 +545,10 @@ int cmd_open(istringstream &cmdstream) {
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -605,13 +632,12 @@ int cmd_close(istringstream &cmdstream){
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
-    
 
     return 0;
 
@@ -686,7 +712,7 @@ int cmd_myauctions(){
                     STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
-                MSG_WA("%s %s", AID.c_str(), state.c_str())
+                MSG_WA("Auction: %s | Active: %s", AID.c_str(), (state == "0") ? "No" : "Yes")
             }
         }
         else if (status == "NOK") MSG("You have no ongoing auctions.")
@@ -697,10 +723,10 @@ int cmd_myauctions(){
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -778,7 +804,7 @@ int cmd_mybids(){
                     STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
-                MSG_WA("%s %s", AID.c_str(), state.c_str())
+                MSG_WA("Auction: %s | Active: %s", AID.c_str(), (state == "0") ? "No" : "Yes")
             }
         }
         else if (status == "NOK") MSG("You have no ongoing bids.")
@@ -789,10 +815,10 @@ int cmd_mybids(){
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -869,7 +895,7 @@ int cmd_list(){
                     STATUS("Can't comprehend server's reply: state is not valid")
                     return -1;
                 }
-                MSG_WA("%s %s", AID.c_str(), state.c_str())
+                MSG_WA("Auction: %s | Active: %s", AID.c_str(), (state == "0") ? "No" : "Yes")
             }
         }
         else if (status == "NOK") MSG("There is no ongoing auctions.")
@@ -879,10 +905,10 @@ int cmd_list(){
                 return -1;
             }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -923,26 +949,25 @@ int cmd_show_asset(istringstream &cmdstream){
     }
     STATUS("Show asset message sent.")
 
-    sbuff.clear();
+    sbuff = "";
+    // 42 Bytes is the total max lenght of the show_asset reply without the Fdata
+    for (int total_n = 0; total_n < 42; total_n += n) {
+        n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+        
+        if (n < 0) {
+            MSG("Something went wrong.")
+            STATUS("Could not receive show asset reply.")
+            return -1;
+        }
+        if (n == 0) {
+            STATUS("No more bytes in show_asset reply.")
+            sbuff[total_n - 1] = '\0';
+            break;
+        }
 
-    while((n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE)) > 0) {
         sv.TCP.buffer[n] = '\0';
         sbuff += string(sv.TCP.buffer);
-    }
 
-    if (n == -1) {
-            MSG("Something went wrong.")
-            if (n == -1) STATUS("Could not receive show asset reply.")
-            else STATUS("Show asset reply is empty.")
-            return -1;
-    }
-
-    if (sbuff.length() >= 1)
-        sbuff = sbuff.substr(0, sbuff.length()-1);
-    else {
-        MSG("Something went wrong.")
-        STATUS("Show asset reply is empty.")
-        return -1;
     }
     
     STATUS_WA("Show asset reply received: %s", sbuff.c_str());
@@ -992,14 +1017,7 @@ int cmd_show_asset(istringstream &cmdstream){
                 STATUS("Not valid fsize.")
                 return -1;
             }
-
-            if (!(reply >> fdata)){
-                MSG("Something went wrong.")
-                STATUS("Can't comprehend server's reply: no fdata.")
-                return -1;
-            }
-
-            ofstream outputFile(fname);
+            ofstream outputFile(ASSETS_DIR + fname);
 
             if (!outputFile.is_open()) {
                 MSG("Something went wrong.")
@@ -1008,14 +1026,44 @@ int cmd_show_asset(istringstream &cmdstream){
                 return -1;
             }
 
-            if(!(outputFile << fdata)){
+            int old_n=n;
+
+            // initialize sv.TCP.buffer with just the Fdata
+            strcpy(sv.TCP.buffer, reply.str().substr(reply.tellg()).c_str());
+
+            while((n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE)) != 0) {
+
+                if (n == -1) {
+                    MSG("Something went wrong.")
+                    STATUS("Could not receive show asset reply.")
+                    outputFile.close();
+                    return -1;
+                }
+
+                if (!(outputFile << reply.rdbuf())){
+                    MSG("Something went wrong.")
+                    STATUS("Error writing to file.")
+                    outputFile.close();
+                    return -1;
+                }
+
+                sv.TCP.buffer[n] = '\0';
+                istringstream reply(sv.TCP.buffer);
+
+                old_n = n;
+            }
+
+            sv.TCP.buffer[old_n-1] = '\0';
+            reply = istringstream(sv.TCP.buffer);
+
+            if (!(outputFile << reply.rdbuf())){
                 MSG("Something went wrong.")
                 STATUS("Error writing to file.")
                 outputFile.close();
                 return -1;
             }
 
-            outputFile.close();
+            MSG_WA("Asset file was successfully saved as \"%s\" in the \"%s\" directory.", fname.c_str(), ASSETS_DIR)
         }
         else if (status=="NOK") MSG("There is no file or some other problem.")
         else {
@@ -1024,14 +1072,12 @@ int cmd_show_asset(istringstream &cmdstream){
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax")
-    else{
+    else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
-
-    MSG("Asset file was successfully saved.")
     
     return 0;
 }
@@ -1121,10 +1167,10 @@ int cmd_bid(istringstream &cmdstream){
         else if (status == "ILG") MSG("You can't bid on your own auction.")
 
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -1194,7 +1240,7 @@ int cmd_show_records(istringstream &cmdstream){
             return -1;
         }
         if (status == "OK"){
-            string host_UID,auction_name,asset_fname,start_date_time;
+            string host_UID,auction_name,asset_fname, start_date, start_time, start_date_time;
             int start_value, timeactive;
 
             if (!(reply >> host_UID)) {
@@ -1203,7 +1249,7 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
 
-            if (host_UID.length() != UID_LEN){
+            if (!is_valid_UID(host_UID)){
                 MSG("Something went wrong.")
                 STATUS("Host UID is not a valid UID.")
                 return -1;
@@ -1215,7 +1261,7 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
 
-            if (auction_name.length() > NAME_MAX_LEN){
+            if (!is_valid_auction_name(auction_name)){
                 MSG("Something went wrong.")
                 STATUS("Auction name is not valid.")
                 return -1;
@@ -1245,12 +1291,13 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
             
-            if (!(reply >> start_date_time)){
+            if (!(reply >> start_date >> start_time)){
                 MSG("Something went wrong.")
                 STATUS("Can't comprehend server's reply: no start date and time")
                 return -1;
             }
 
+            start_date_time = start_date + " " + start_time;
             if (!is_valid_date_time(start_date_time)){
                 MSG("Something went wrong.")
                 STATUS("Start date_time is not valid.")
@@ -1269,60 +1316,107 @@ int cmd_show_records(istringstream &cmdstream){
                 return -1;
             }
 
-            //se tiverem sido feitas bids comeca a ler
-            int num_bids;
             bid bids[MAX_BIDS_SHOWN];
-            memset(bids,0,MAX_BIDS_SHOWN);
-            for (num_bids = 0 ;; num_bids++) {
+
+            bool ended = false;
+            string end_date_time;
+            int end_sec;
+            int num_bids;
+            for (num_bids = 0 ;; num_bids++) { 
                 if (num_bids > MAX_BIDS_SHOWN){
                     MSG("Something went wrong.")
                     STATUS("The number of bids exceeds the max number of bids to show.")
                     return -1;
                 }
 
-                bid temp_bid = {};
-
                 if (!(reply >> sbuff)) {
+                    if (reply.eof()) break;
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: no B.")
+                    STATUS("Can't comprehend server's reply: no info character.")
                     return -1;
                 }
 
-                if (sbuff == "E") break;
+                if (sbuff == "E") {
+                    ended = true;
 
+                    string end_date, end_time;
+                    if (!(reply >> end_date >> end_time)) {
+                        MSG("Something went wrong.")
+                        STATUS("Can't comprehend server's reply: no end date time.")
+                        return -1;
+                    }
+
+                    end_date_time = end_date + " " + end_time;
+                    if (!is_valid_date_time(end_date_time)){
+                        MSG("Something went wrong.")
+                        STATUS("End date_time is not valid.")
+                        return -1;
+                    }
+
+
+
+                    if (!(reply >> end_sec)) {
+                        MSG("Something went wrong.")
+                        STATUS("Can't comprehend server's reply: no end time.")
+                        return -1;
+                    }
+
+                    if (!is_valid_timeactive(end_sec) && end_sec < timeactive){
+                        MSG("Something went wrong.")
+                        STATUS("End time is not valid.")
+                        return -1;
+                    }
+
+                    if (!reply.eof()) {
+                        MSG("Something went wrong.")
+                        STATUS("Can't comprehend server's reply: too many arguments.")
+                        return -1;
+                    }
+
+                    break;
+                }
+                
                 if (sbuff != "B"){
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: shoul")
+                    STATUS("Can't comprehend server's reply: ")
                     return -1;
                 }
-
-                if (!(reply >> temp_bid.UID)) {
+                
+                if (!(reply >> bids[num_bids].UID)) {
                     MSG("Something went wrong.")
                     STATUS("Can't comprehend server's reply: no UID.")
                     return -1;
                 }
 
-                if (!is_valid_UID(temp_bid.UID)){
+                if (!is_valid_UID(bids[num_bids].UID)){
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: UID is not valid")
+                    STATUS("Can't comprehend server's reply: UID is not valid.")
                     return -1;
                 }
-                
-                if (!(reply >> temp_bid.value)) {
+
+                if (!(reply >> bids[num_bids].value)) {
                     MSG("Something went wrong.")
                     STATUS("Can't comprehend server's reply: no value.")
                     return -1;
                 }
 
-                if (!is_valid_bid_value(temp_bid.value)){
+                if (!is_valid_bid_value(bids[num_bids].value)){
                     MSG("Something went wrong.")
                     STATUS("Can't comprehend server's reply: value is too big.")
                     return -1;
                 }
 
-                if (!is_valid_date_time(temp_bid.date_time)){
+                string date_time, clock_time;
+                if (!(reply >> date_time >> clock_time)) {
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: date_time is not valid")
+                    STATUS("Can't comprehend server's reply: no date_time.")
+                    return -1;
+                }
+
+                bids[num_bids].date_time = date_time + " " + clock_time;
+                if (!is_valid_date_time(bids[num_bids].date_time)){
+                    MSG("Something went wrong.")
+                    STATUS("Can't comprehend server's reply: date_time is not valid.")
                     return -1;
                 }
 
@@ -1335,20 +1429,24 @@ int cmd_show_records(istringstream &cmdstream){
 
                 if (is_valid_bid_time(bid_time)){
                     MSG("Something went wrong.")
-                    STATUS("Can't comprehend server's reply: date_time is not valid")
+                    STATUS("Can't comprehend server's reply: date_time is not valid.")
                     return -1;
                 }
                 
-                temp_bid.time = stoi(bid_time);
+                bids[num_bids].time = stoi(bid_time);
             }
 
-            if (!(reply >> sbuff)) {
-                MSG("Something went wrong.")
-                STATUS("Can't comprehend server's reply: no E.")
-                return -1;
+            for (int i = 0; i < num_bids; i++) {
+                MSG_WA("Biddder: %s | Value: %d | Date: %s | Time elapsed: %d sec", bids[i].UID.c_str(), bids[i].value, bids[i].date_time.c_str(), bids[i].time)
             }
-            
-            
+
+            if (ended) {
+                MSG_WA("Auction ended at %s, lasting %d seconds.", end_date_time.c_str(), end_sec)
+            }
+            else {
+                MSG("Auction is still active.")
+            }
+
         }
         else if (status == "NOK") MSG_WA("Auction %s does not exist.", AID.c_str())
         else {
@@ -1357,10 +1455,10 @@ int cmd_show_records(istringstream &cmdstream){
             return -1;
         }
     }
-    else if (opcode == "ERR") MSG("Wrong syntax.")
     else {
         MSG("Something went wrong.")
-        STATUS("Can't comprehend server's reply.")
+        if (opcode == "ERR") STATUS("Wrong syntax.")
+        else STATUS("Can't comprehend server's reply.")
         return -1;
     }
 
@@ -1505,9 +1603,13 @@ int processCommand(string full_cmd) {
 
         end_tcp();
     }
-    // else if (cmd == "show_records" || cmd == "sr") {
-    //     cmd_show_records(cmdstream);
-    // }
+    else if (cmd == "show_record" || cmd == "sr") {
+        start_udp();
+
+        cmd_show_records(cmdstream);
+
+        end_udp();
+    }
     else {
         MSG("Invalid command.")
     }

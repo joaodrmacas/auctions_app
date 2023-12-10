@@ -60,22 +60,40 @@ bool is_valid_fsize(int fsize){
     return true;
 }
 
+bool is_numeric(string input) {
+    for (char c : input) {
+        if (!isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool is_valid_date_time(string input) {
-    std::istringstream ss(input);
+    std::istringstream iss(input);
     int year, month, day, hour, minute, second;
-    char dash1, dash2, colon1, colon2;
+    string syear, smonth, sday, shour, sminute, ssecond;    
 
-    if (input.length() == DATE_TIME_LEN){
-        STATUS("Date_time is not 19 characters.")
-    }
-
-    if (!(ss >> year >> dash1 >> month >> dash2 >> day >> hour >> colon1 >> minute >> colon2 >> second)){
-        STATUS("Couldnt extract date in the correct form: ")
+    if (getline(iss, syear, '-') && syear.length() == 4 && is_numeric(syear) &&
+        getline(iss, smonth, '-') && smonth.length() == 2 && is_numeric(smonth) &&
+        getline(iss, sday, ' ') && sday.length() == 2 && is_numeric(sday) && 
+        getline(iss, shour, ':') && shour.length() == 2 && is_numeric(shour) &&
+        getline(iss, sminute, ':') && sminute.length() == 2 && is_numeric(sminute) &&
+        getline(iss, ssecond) && ssecond.length() == 2 && is_numeric(ssecond)) {
+            year = stoi(syear);
+            month = stoi(smonth);
+            day = stoi(sday);
+            hour = stoi(shour);
+            minute = stoi(sminute);
+            second = stoi(ssecond);
+    } else {
+        STATUS_WA("Couldnt extract date in the correct form: Date: %d-%d-%d %d:%d:%d", year, month, day, hour, minute, second)
         return false;
+        
     }
 
-    else if (dash1 != '-' || dash2 != '-' || colon1 != ':' || colon2 != ':'){
-        STATUS("Date does not have - or :")
+    if (year < 0){
+        STATUS("Year is negative.")
         return false;
     }
 
@@ -104,7 +122,7 @@ bool is_valid_date_time(string input) {
         return false;
     }
 
-    else if(!ss.eof()){
+    else if(!iss.eof()){
         STATUS("Date didnt reach eof.")
         return false;
     }
@@ -208,13 +226,13 @@ bool is_valid_bid_value(int value){
 
 bool is_valid_bid_time(string time) {
     if (time.length() != END_TIME_LEN) {
-        STATUS("End_time is not 5 characters long.")
+        STATUS("Bid_time is not 5 characters long.")
         return false;
     }
 
     for (char c : time) {
         if (!isdigit(c)) {
-            STATUS("End_time should be numeric.")
+            STATUS("Bid_time should be numeric.")
             return false;
         }
     }

@@ -3,20 +3,23 @@
 
 #include "../definitions.hpp"
 #include "../validations.hpp"
+#include "commands.hpp"
 
-#define PUBLIC_PORT "58011"
-#define PUBLIC_IP "tejo.tecnico.ulisboa.pt"
-#define MY_IP "localhost"
+#define PUBLIC_PORT ("58011")
+#define PUBLIC_IP ("tejo.tecnico.ulisboa.pt")
+#define MY_IP ("localhost")
 
-#define NO_USER ""
-#define NO_PASS ""
+#define NO_USER ("")
+#define NO_PASS ("")
+
+#define ASSETS_DIR ("user/assets/")
 
 typedef struct protocol {
     int fd,errcode;
     socklen_t addrlen;
     struct addrinfo hints,*res;
     struct sockaddr_in addr;
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE+1];
 } protocol;
 
 typedef struct __sys_var__ {

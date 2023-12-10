@@ -5,10 +5,10 @@
 #include "../definitions.hpp"
 #include "../validations.hpp"
 
-#define USERS_DIR_PATH "USERS";
-#define AUCTIONS_DIR_PATH "AUCTIONS"
-#define HOSTED_DIR_PATH "HOSTED"
-#define BIDDED_DIR_PATH "BIDDED"
+#define USERS_DIR_PATH ("USERS")
+#define AUCTIONS_DIR_PATH ("AUCTIONS")
+#define HOSTED_DIR_PATH ("HOSTED")
+#define BIDDED_DIR_PATH ("BIDDED")
 
 namespace fs = filesystem;
 
