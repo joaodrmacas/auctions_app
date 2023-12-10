@@ -82,6 +82,34 @@ int end_tcp() {
     return 0;
 }
 
+string get_unique_fname(string fname) {
+    if (!ifstream(fname)) return fname;
+
+    int n = 1;
+    string fname_old = fname;
+    fname += " (" + to_string(n) + ")";
+
+    STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
+
+    while(ifstream(fname)) {
+        int n_pos;
+        for (n_pos = fname.length() - 1; n_pos >= 0; n_pos--) {
+            if (fname[n_pos] == '(') {
+                n_pos++;
+                break;
+            }
+        }
+
+        fname_old = fname;
+        fname = fname.substr(0, n_pos) + to_string(++n) + ")";
+
+        STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
+    }
+    
+    return fname;
+}
+
+
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
 
@@ -124,7 +152,7 @@ int cmd_login(istringstream &cmdstream) {
         STATUS("Could not send login message")
         return -1;
     }
-    STATUS("Login message sent.")
+    STATUS_WA("Login message sent: %s", sbuff.c_str())
 
     // Reply
 
@@ -176,7 +204,7 @@ int cmd_login(istringstream &cmdstream) {
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -198,7 +226,7 @@ int cmd_logout() {
         STATUS("Could not send logout message")
         return -1;
     }
-    STATUS("Logout message sent.")
+    STATUS_WA("Logout message sent: %s", sbuff.c_str())
 
     //memset(sv.UDP.buffer,0,128);
 
@@ -249,7 +277,7 @@ int cmd_logout() {
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -271,7 +299,7 @@ int cmd_unregister() {
         STATUS("Could not send unregister message.")
         return -1;
     }
-    STATUS("Unregister message sent.")
+    STATUS_WA("Unregister message sent: %s", sbuff.c_str())
 
     //memset(sv.UDP.buffer,0,128);
     
@@ -326,7 +354,7 @@ int cmd_unregister() {
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -429,6 +457,9 @@ int cmd_open(istringstream &cmdstream) {
         sv.TCP.buffer[fasset.gcount()] = '\0';
         sbuff += sv.TCP.buffer;
 
+        STATUS_WA("Open message sent (if too big, 1st %d bytes): %s", 90,
+                    sbuff.substr(0, min(90, static_cast<int>(sbuff.length()))).c_str())
+
         if (!fasset.eof()) {
             while(!fasset.eof()) {
                 size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
@@ -480,16 +511,26 @@ int cmd_open(istringstream &cmdstream) {
     }
 
     // Reply
-    size_t n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-    if(n <= 0) {
+    // Read till AS closes socket
+    sv.TCP.buffer[0] = '\0';
+    size_t n, old_n = 0;
+    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+        if (n == -1) {
+            MSG("Something went wrong.")
+            STATUS("Could not receive show asset reply.")
+            return -1;
+        }
+        old_n = n;
+    }
+
+    if(sv.TCP.buffer[0] == '\0') {
         MSG("Something went wrong.")
-        if (n == -1) STATUS("Could not receive open reply.")
-        else STATUS("Open reply is empty.")
+        STATUS("Open reply is empty.")
         return -1;
     }
 
     // Retirar o \n no final e colocar \0
-    sv.TCP.buffer[n-1] = '\0';
+    sv.TCP.buffer[old_n-1] = '\0';
 
     STATUS_WA("Open reply received: %s", sv.TCP.buffer);
 
@@ -547,7 +588,7 @@ int cmd_open(istringstream &cmdstream) {
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -587,19 +628,29 @@ int cmd_close(istringstream &cmdstream){
         STATUS("Could not send close request.")
         return -1;
     }
-    STATUS("Close message sent.")
+    STATUS_WA("Close message sent: %s", sbuff.c_str())
 
-    //memset(sv.TCP.buffer,0,128);
-    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    // Reply
+    // Read till AS closes socket
+    sv.TCP.buffer[0] = '\0';
+    size_t n, old_n = 0;
+    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+        if (n == -1) {
+            MSG("Something went wrong.")
+            STATUS("Could not receive show asset reply.")
+            return -1;
+        }
+        old_n = n;
+    }
 
-    if (n <= 0){
+    if(sv.TCP.buffer[0] == '\0') {
         MSG("Something went wrong.")
-        if (n == -1) STATUS("Could not receive close reply.")
-        else STATUS("Close reply message is empty.")
+        STATUS("Open reply is empty.")
         return -1;
     }
 
-    sv.TCP.buffer[n-1] = '\0';
+    // Retirar o \n no final e colocar \0
+    sv.TCP.buffer[old_n-1] = '\0';
 
     STATUS_WA("Close reply received: %s", sv.TCP.buffer);
 
@@ -634,7 +685,7 @@ int cmd_close(istringstream &cmdstream){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -657,7 +708,7 @@ int cmd_myauctions(){
         STATUS("Could not send my auctions message")
         return -1;
     }
-    STATUS("My auctions message sent.")
+    STATUS_WA("Myauction message sent: %s", sbuff.c_str())
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
@@ -725,7 +776,7 @@ int cmd_myauctions(){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -749,7 +800,7 @@ int cmd_mybids(){
         STATUS("Could not send my bids message")
         return -1;
     }
-    STATUS("My bids message sent.")
+    STATUS_WA("Mybids message sent: %s", sbuff.c_str())
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
@@ -817,7 +868,7 @@ int cmd_mybids(){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -840,7 +891,7 @@ int cmd_list(){
         STATUS("Could not send list message")
         return -1;
     }
-    STATUS("List message sent.")
+    STATUS_WA("List message sent: %s", sbuff.c_str())
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
@@ -907,7 +958,7 @@ int cmd_list(){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -947,8 +998,9 @@ int cmd_show_asset(istringstream &cmdstream){
         STATUS("Could not send show asset request.")
         return -1;
     }
-    STATUS("Show asset message sent.")
+    STATUS_WA("Show_asset message sent: %s", sbuff.c_str())
 
+    // Reply
     sbuff = "";
     // 42 Bytes is the total max lenght of the show_asset reply without the Fdata
     for (int total_n = 0; total_n < 42; total_n += n) {
@@ -1017,12 +1069,14 @@ int cmd_show_asset(istringstream &cmdstream){
                 STATUS("Not valid fsize.")
                 return -1;
             }
-            ofstream outputFile(ASSETS_DIR + fname);
+
+            fname = get_unique_fname(ASSETS_DIR + fname);
+
+            ofstream outputFile(fname);
 
             if (!outputFile.is_open()) {
                 MSG("Something went wrong.")
-                STATUS("Error opening the file.")
-                outputFile.close();
+                STATUS_WA("Error opening the file: %s.", fname.c_str())
                 return -1;
             }
 
@@ -1036,14 +1090,12 @@ int cmd_show_asset(istringstream &cmdstream){
                 if (n == -1) {
                     MSG("Something went wrong.")
                     STATUS("Could not receive show asset reply.")
-                    outputFile.close();
                     return -1;
                 }
 
                 if (!(outputFile << reply.rdbuf())){
                     MSG("Something went wrong.")
                     STATUS("Error writing to file.")
-                    outputFile.close();
                     return -1;
                 }
 
@@ -1059,11 +1111,18 @@ int cmd_show_asset(istringstream &cmdstream){
             if (!(outputFile << reply.rdbuf())){
                 MSG("Something went wrong.")
                 STATUS("Error writing to file.")
-                outputFile.close();
                 return -1;
             }
+            
+            string short_fname;
+            for (int i = fname.length() - 1; i >= 0; i--) {
+                if (fname[i] == '/') {
+                    short_fname = fname.substr(i + 1);
+                    break;
+                }
+            }
 
-            MSG_WA("Asset file was successfully saved as \"%s\" in the \"%s\" directory.", fname.c_str(), ASSETS_DIR)
+            MSG_WA("Asset file was successfully saved as \"%s\" in the \"%s\" directory.", short_fname.c_str(), ASSETS_DIR)
         }
         else if (status=="NOK") MSG("There is no file or some other problem.")
         else {
@@ -1074,7 +1133,7 @@ int cmd_show_asset(istringstream &cmdstream){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -1127,18 +1186,29 @@ int cmd_bid(istringstream &cmdstream){
         return -1;
     }
 
-    STATUS("Bid message sent.")
+    STATUS_WA("Bid message sent: %s", sbuff.c_str())
 
-    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    // Reply
+    // Read till AS closes socket
+    sv.TCP.buffer[0] = '\0';
+    size_t n, old_n = 0;
+    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+        if (n == -1) {
+            MSG("Something went wrong.")
+            STATUS("Could not receive show asset reply.")
+            return -1;
+        }
+        old_n = n;
+    }
 
-    if (n <= 0){
+    if(sv.TCP.buffer[0] == '\0') {
         MSG("Something went wrong.")
-        if (n == -1) STATUS("Could not receive bid reply.")
-        else STATUS("Bid reply message is empty.")
+        STATUS("Open reply is empty.")
         return -1;
     }
 
-    sv.TCP.buffer[n-1] = '\0';
+    // Retirar o \n no final e colocar \0
+    sv.TCP.buffer[old_n-1] = '\0';
 
     STATUS_WA("Close reply received: %s", sv.TCP.buffer);
 
@@ -1169,7 +1239,7 @@ int cmd_bid(istringstream &cmdstream){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
@@ -1209,7 +1279,7 @@ int cmd_show_records(istringstream &cmdstream){
         STATUS("Could not send show records message")
         return -1;
     }
-    STATUS("Show records message sent.")
+    STATUS_WA("Show_records message sent: %s", sbuff.c_str())
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n <= 0) {
@@ -1457,7 +1527,7 @@ int cmd_show_records(istringstream &cmdstream){
     }
     else {
         MSG("Something went wrong.")
-        if (opcode == "ERR") STATUS("Wrong syntax.")
+        if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
         else STATUS("Can't comprehend server's reply.")
         return -1;
     }
