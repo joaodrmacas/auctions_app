@@ -17,15 +17,21 @@ all: user server
 server: $(TARGET_SV)
 
 $(TARGET_SV): $(OBJ_SV)
-	$(CXX) -o $(TARGET_SV) $(OBJ_SV)
+	$(CXX) -std=c++17 -o $(TARGET_SV) $(OBJ_SV)
 
 user: $(TARGET_USER)
 
 $(TARGET_USER): $(OBJ_USR)
-	$(CXX) -o $(TARGET_USER) $(OBJ_USR)
+	$(CXX) -std=c++17 -o $(TARGET_USER) $(OBJ_USR)
 
 %.o: %.cpp
 	$(CXX) -c $< -o $@
 
 clean:
 	rm -f $(OBJ_USR) $(OBJ_SV) $(TARGET_USER) $(TARGET_SV)
+
+run_user:
+	./$(TARGET_USER)
+
+run_server:
+	./$(TARGET_SV)

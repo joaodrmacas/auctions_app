@@ -17,8 +17,10 @@
 #include <regex>
 #include <chrono>
 #include <iomanip>
+#include <filesystem>
 
 using namespace std;
+namespace fs = filesystem;
 
 #define DEBUG (1)
 #define STATUS_ON (1)
@@ -44,25 +46,37 @@ typedef struct bid {
     int value, time;
 } bid;
 
+typedef struct protocol {
+    int fd,errcode;
+    socklen_t addrlen;
+    struct addrinfo hints,*res;
+    struct sockaddr_in addr;
+    char buffer[BUFFER_SIZE+1];
+} protocol;
+
 #define ERR(...)                                                        \
     {                                                                   \
-        if (DEBUG)                                                      \
-            printf("[ERROR]: %s | Line %d\n", __VA_ARGS__, __LINE__);   \
+        printf("[ERROR]: %s | Line %d\n", __VA_ARGS__, __LINE__);   \
         exit(1);                                                        \
     }
+
+#define ERR(...)                                                        \
+    {                                                                   \
+        printf("[STATUS]: %s | Line %d\n", __VA_ARGS__, __LINE__);      \
+        exit(1);                                                        \
+    }
+
+#define LOG(active, msg)                                                     \
+    {if (active) {printf("[LOG]: %s  [Line %d] [File %s]\n", msg, __LINE__, __FILE__);}}
+
+#define LOG_WA(active, format, ...)                                          \
+    {if (active) {printf("[LOG]: " format "  [Line %d] [File %s]\n", __VA_ARGS__, __LINE__, __FILE__);}}
 
 #define STATUS(msg)                                                     \
     {if (STATUS_ON) {printf("[STATUS]: %s  [Line %d] [File %s]\n", msg, __LINE__, __FILE__);}}
 
 #define STATUS_WA(format, ...)                                          \
     {if (STATUS_ON) {printf("[STATUS]: " format "  [Line %d] [File %s]\n", __VA_ARGS__, __LINE__, __FILE__);}}
-
-// FIXME: NO NEED TO SEE THE LINE AND FILE
-#define MSG(msg)                    \
-    {printf("%s", msg); if (STATUS_ON) printf(" [Line %d] [File %s]", __LINE__, __FILE__); printf("\n");}               \
-
-#define MSG_WA(format, ...)         \
-    {printf(format, __VA_ARGS__ ); if (STATUS_ON) printf(" [Line %d] [File %s]", __LINE__, __FILE__); printf("\n");} \
 
 
 #endif 

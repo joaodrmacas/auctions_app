@@ -20,7 +20,7 @@ int start_udp() {
         return -1;
     }
 
-    sv.UDP.addrlen=sizeof(sv.UDP.addr);
+    
 
     return 0;
 }
@@ -54,7 +54,7 @@ int start_tcp() {
     sv.TCP.errcode=getaddrinfo( sv.ASIP.c_str(), sv.ASport.c_str() ,&sv.TCP.hints,&sv.TCP.res);
     if(sv.TCP.errcode!=0) {
         STATUS("Could not get address info [TCP]")
-        exit(1);
+        return -1;
     }
 
     sv.TCP.addrlen=sizeof(sv.TCP.addr);
@@ -633,7 +633,7 @@ int cmd_close(istringstream &cmdstream){
     // Reply
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
-    size_t n, old_n = 0;
+    size_t old_n = 0;
     while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
         if (n == -1) {
             MSG("Something went wrong.")
@@ -1191,7 +1191,7 @@ int cmd_bid(istringstream &cmdstream){
     // Reply
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
-    size_t n, old_n = 0;
+    size_t old_n = 0;
     while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
         if (n == -1) {
             MSG("Something went wrong.")

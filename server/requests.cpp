@@ -6,38 +6,39 @@ extern sys_var sv;
 
 
 
-int req_login(istringstream &reqstream){
+string req_login(istringstream &reqstream){
 
     string UID, req_pass;
 
+    string reply = "ERR\n";
     if (!(reqstream >> UID)){
         STATUS("Login request doesn't have UID")
-        return -1;
+        return reply;
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return -1;
+        return reply;
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Login request doesn't have password.")
-        return -1;
+        return reply;
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return -1;
+        return reply;
     }
 
     if (!reqstream.eof()){
         STATUS("Login request format is incorrect.")
-        return -1;
+        return reply;
     }
 
     //Começar a checkar o request.
 
-    string reply = "RLI ";
+    reply = "RLI ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
@@ -49,11 +50,9 @@ int req_login(istringstream &reqstream){
         ofstream pass_stream(pass_path);
         ofstream login_stream(login_path);
 
-
         if (!login_stream.is_open()){
             STATUS("Couldn't create a login file.")
-            login_stream.close();
-            return -1;
+            return "";
         }
 
         login_stream.close();
@@ -61,13 +60,13 @@ int req_login(istringstream &reqstream){
         if (!(pass_stream.is_open())){
             STATUS("Couldn't create password file.")
             pass_stream.close();
-            return -1;
+            return "";
         }
 
         if (!(pass_stream << req_pass)){
             STATUS("Error writing to password file.")
             pass_stream.close();
-            return -1;
+            return "";
         }
 
         pass_stream.close();
@@ -80,7 +79,7 @@ int req_login(istringstream &reqstream){
         if (!(pass_stream.is_open())){
             STATUS("Couldn't open password file.")
             pass_stream.close();
-            return -1;
+            return "";
         }
 
         string password;
@@ -89,7 +88,7 @@ int req_login(istringstream &reqstream){
         if (pass_stream.fail()){
             STATUS("Error reading password file.")
             pass_stream.close();
-            return -1;
+            return "";
         }
 
         pass_stream.close();
@@ -106,7 +105,7 @@ int req_login(istringstream &reqstream){
                 if (!login_stream.is_open()){
                     STATUS("Couldn't create a login file.")
                     login_stream.close();
-                    return -1;
+                    return "";
                 }
 
                 login_stream.close();
@@ -350,7 +349,7 @@ int req_myauctions(istringstream &reqstream){
             reply += "OK";
             try {
                 for (const auto& entry : fs::directory_iterator(uid_hosted_dir)) {
-                    if (fs::is_regular_file(entry.path())) {
+                    if (fs::is_regular_file(entry.path())) { // Reply este if é preciso?
                         string AID;
                         AID = entry.path().stem().string();
 
@@ -375,6 +374,8 @@ int req_myauctions(istringstream &reqstream){
     //Reply o que acontece quando não existe a pasta desse user?
     //consideramos como se não tivesse logged in? Pq so o proprio user pode pedir este
     else reply += "NLG\n";
+    
+    STATUS_WA("My auctions server reply: %s", reply)
 
     //Enviar mensagem;
 
@@ -415,7 +416,7 @@ int req_mybids(istringstream &reqstream){
             reply += "OK";
             try {
                 for (const auto& entry : fs::directory_iterator(uid_bidded_dir)) {
-                    if (fs::is_regular_file(entry.path())) {
+                    if (fs::is_regular_file(entry.path())) { // Reply este if é preciso?
                         string AID;
                         AID = entry.path().stem().string();
 
@@ -439,11 +440,57 @@ int req_mybids(istringstream &reqstream){
     }
     else reply += "NLG\n";
 
+    STATUS_WA("My bids server reply: %s", reply)
+
     //Enviar mensagem;
+
 
     return 0;
 
 }
+
+string req_list(){
+
+    string reply = "RLS ";
+
+    fs::path auctions_dir = fs::path(AUCTIONS_DIR_PATH);
+
+    if (!fs::exists(auctions_dir)) {
+        STATUS("AUCTIONS directory does not exist")
+        return "";
+    } //a pasta auction assume se que ja está criada antes de correr
+    else if (fs::is_empty(auctions_dir)) reply = "NOK\n";
+    else {
+        reply += "OK";
+            try {
+                for (const auto& entry : fs::directory_iterator(auctions_dir)) {
+                    if (fs::is_regular_file(entry.path())) { // Reply este if é preciso?
+                        string AID;
+                        AID = entry.path().stem().string();
+
+                        reply += " " + AID;
+
+                        fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+                        fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                        
+                        if (!(fs::exists(end_auction_file))){
+                            reply += " 1";
+                        }
+                        else reply += " 0";
+                    }
+                }
+                reply += "\n";
+            } catch (const std::filesystem::filesystem_error& e) {
+                STATUS("Error accessing directory")
+                return "";
+            }
+    }
+
+    STATUS_WA("My bids server reply: %s", reply)
+
+    return reply;
+}
+
 
 int handleRequest(string req){
 
@@ -456,7 +503,7 @@ int handleRequest(string req){
     }
 
     if (request_type == "LIN"){
-        if (req_login(reqstream) == -1){
+        if (req_login(reqstream) == ""){
             STATUS("Error during login.")
         }
     }
@@ -475,7 +522,19 @@ int handleRequest(string req){
 
     else if (request_type == "LMA"){
         if (req_logout(reqstream) == -1){
-            STATUS("Error during unregister.")
+            STATUS("Error during my auctions.")
+        }
+    }
+
+    else if (request_type == "LMB"){
+        if (req_logout(reqstream) == -1){
+            STATUS("Error during my auctions.")
+        }
+    }
+
+    else if (request_type == "LST"){
+        if (req_list() == ""){
+            STATUS("Error during list")
         }
     }
 
