@@ -12,6 +12,7 @@ string req_unregister(istringstream &reqstream);
 string req_myauctions(istringstream &reqstream);
 string req_mybids(istringstream &reqstream);
 string req_list();
-int handleRequest(string req);
+int handle_TCP_req(string req);
+int handle_UDP_req(string req);
 
 #endif

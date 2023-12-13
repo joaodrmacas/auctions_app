@@ -190,8 +190,10 @@ int main(int argc, char** argv){
                 }
 
                 string request(sv.TCP.buffer);
-                handleRequest(request);
+                handle_TCP_Request(request);
                 end_tcp_socket();
+
+                exit(EXIT_SUCCESS);
             }
         }
 
@@ -218,7 +220,7 @@ int main(int argc, char** argv){
             if (req_pid == 0){
                 STATUS_WA("Received request: %s",sv.UDP.buffer)
                 string request(sv.UDP.buffer);
-                exit(handleRequest(request));
+                exit(handle_UDP_req(request));
             }
 
         }

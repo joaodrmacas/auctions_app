@@ -211,7 +211,7 @@ string req_logout(istringstream &reqstream){
 
     STATUS_WA("Logout message: %s",reply.c_str())
 
-    return 0;
+    return reply;
 }
 
 string req_unregister(istringstream &reqstream){
@@ -268,7 +268,7 @@ string req_unregister(istringstream &reqstream){
             if (!(pass_stream.is_open())){
                 STATUS("Couldn't open password file.")
                 pass_stream.close();
-                return -1;
+                return "BAD\n";
             }
 
             string password;
@@ -277,7 +277,7 @@ string req_unregister(istringstream &reqstream){
             if (pass_stream.fail()){
                 STATUS("Error reading password file.")
                 pass_stream.close();
-                return -1;
+                return "BAD\n";
             }
 
             pass_stream.close();
@@ -291,7 +291,7 @@ string req_unregister(istringstream &reqstream){
                 }
                 catch (const fs::filesystem_error& e) {
                     STATUS("Error deleting file.")
-                    return -1;
+                    return "BAD\n";
                 }
                 reply += "OK\n";
 
@@ -306,7 +306,7 @@ string req_unregister(istringstream &reqstream){
 
     //Enviar mensagem
 
-    return 0;
+    return reply;
 }
 
 string req_myauctions(istringstream &reqstream){
@@ -315,17 +315,17 @@ string req_myauctions(istringstream &reqstream){
 
     if (!(reqstream >> UID)){
         STATUS("My auctions request doesn't have UID")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("My auctions request format is incorrect.")
-        return -1;
+        return "ERR\n";
     }
 
     string reply = "RMA ";
@@ -360,9 +360,9 @@ string req_myauctions(istringstream &reqstream){
                     }
                 }
                 reply += "\n";
-            } catch (const std::filesystem::filesystem_error& e) {
+            } catch (const filesystem::filesystem_error& e) {
                 STATUS("Error accessing directory")
-                return -1;
+                return "BAD\n";
             }
         }
     }
@@ -372,9 +372,7 @@ string req_myauctions(istringstream &reqstream){
     
     STATUS_WA("My auctions server reply: %s", reply)
 
-    //Enviar mensagem;
-
-    return 0;
+    return reply;
 }
 
 string req_mybids(istringstream &reqstream){
@@ -382,17 +380,17 @@ string req_mybids(istringstream &reqstream){
 
     if (!(reqstream >> UID)){
         STATUS("My auctions request doesn't have UID")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("My auctions request format is incorrect.")
-        return -1;
+        return "ERR\n";
     }
 
     string reply = "RMB ";
@@ -427,9 +425,9 @@ string req_mybids(istringstream &reqstream){
                     }
                 }
                 reply += "\n";
-            } catch (const std::filesystem::filesystem_error& e) {
+            } catch (const filesystem::filesystem_error& e) {
                 STATUS("Error accessing directory")
-                return -1;
+                return "BAD\n";
             }
         }
     }
@@ -437,11 +435,7 @@ string req_mybids(istringstream &reqstream){
 
     STATUS_WA("My bids server reply: %s", reply)
 
-    //Enviar mensagem;
-
-
-    return 0;
-
+    return reply;
 }
 
 string req_list(){
@@ -475,7 +469,7 @@ string req_list(){
                     }
                 }
                 reply += "\n";
-            } catch (const std::filesystem::filesystem_error& e) {
+            } catch (const filesystem::filesystem_error& e) {
                 STATUS("Error accessing directory")
                 return "BAD\n";
             }
@@ -486,10 +480,10 @@ string req_list(){
     return reply;
 }
 
-
 int handle_TCP_req(string req){
     istringstream reqstream(req);
     string request_type;
+    string reply;
 
     if (!(reqstream>>request_type)){
         STATUS("Invalid command")
@@ -497,25 +491,49 @@ int handle_TCP_req(string req){
     }
 
     if (request_type == "OPA"){
-        if (req_open(reqstream) == -1){
+        reply = req_open(reqstream);
+        if (reply == ""){
             STATUS("Error during open.")
+            return -1;
         }
     }
 
     else if (request_type == "CLS"){
-        if (req_close(reqstream) == -1){
+        reply = req_close(reqstream);
+        if (reply == ""){
             STATUS("Error during open.")
+            return -1;
         }
     }
+
+    else if (request_type == "SAS"){
+        reply = req_showasset(reqstream);
+        if (reply == ""){
+            STATUS("Error during show asset.")
+            return -1;
+        }
+    }
+    
+    else if (request_type == "BID"){
+        reply = req_bid(reqstream);
+        if (reply == ""){
+            STATUS("Error during bid.")
+            return -1;
+        }
+    }
+
+    else reply = "ERR\n";
+
+    //send reply
 
     return 0;
 }
 
-
-int handleRequest(string req){
+int handle_UDP_req(string req){
 
     istringstream reqstream(req);
     string request_type;
+    string reply;
 
     if (!(reqstream>>request_type)){
         STATUS("Invalid command")
@@ -523,45 +541,53 @@ int handleRequest(string req){
     }
 
     if (request_type == "LIN"){
-        if (req_login(reqstream) == ""){
+        reply = req_login(reqstream);
+        if (reply == ""){
             STATUS("Error during login.")
         }
     }
 
     else if (request_type == "LOU"){
-        if (req_logout(reqstream) == -1){
+        reply = req_logout(reqstream);
+        if (reply == -1){
             STATUS("Error during logout.")
         }
     }
 
     else if (request_type == "UNR"){
-        if (req_unregister(reqstream) == -1){
+        reply = req_unregister(reqstream);
+        if (reply == -1){
             STATUS("Error during unregister.")
         }
     }
 
     else if (request_type == "LMA"){
-        if (req_myauctions(reqstream) == -1){
+        reply = req_myauctions(reqstream);
+        if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LMB"){
-        if (req_mybids(reqstream) == -1){
+        reply = req_mybids(reqstream);
+        if (reply == -1){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LST"){
-        if (req_list() == ""){
+        reply = req_list();
+        if (reply == ""){
             STATUS("Error during list")
         }
     }
 
     else{
-        //TO DO Mandar ERR
+        reply = "ERR\n";
         STATUS("Invalid request.")
     }
+
+    //mandar reply
 
     return 0;
 }
