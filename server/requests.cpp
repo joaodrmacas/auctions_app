@@ -1,44 +1,40 @@
-#include "server_defs.hpp"
 #include "requests.hpp"
-#include "../validations.hpp"
 
 extern sys_var sv;
-
 
 
 string req_login(istringstream &reqstream){
 
     string UID, req_pass;
 
-    string reply = "ERR\n";
     if (!(reqstream >> UID)){
         STATUS("Login request doesn't have UID")
-        return reply;
+        return "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return reply;
+        return "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Login request doesn't have password.")
-        return reply;
+        return "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return reply;
+        return "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Login request format is incorrect.")
-        return reply;
+        return "ERR\n";
     }
 
     //Começar a checkar o request.
 
-    reply = "RLI ";
+    string reply = "RLI ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
@@ -52,7 +48,7 @@ string req_login(istringstream &reqstream){
 
         if (!login_stream.is_open()){
             STATUS("Couldn't create a login file.")
-            return "";
+            return "BAD\n";
         }
 
         login_stream.close();
@@ -60,13 +56,13 @@ string req_login(istringstream &reqstream){
         if (!(pass_stream.is_open())){
             STATUS("Couldn't create password file.")
             pass_stream.close();
-            return "";
+            return "BAD\n";
         }
 
         if (!(pass_stream << req_pass)){
             STATUS("Error writing to password file.")
             pass_stream.close();
-            return "";
+            return "BAD\n";
         }
 
         pass_stream.close();
@@ -79,7 +75,7 @@ string req_login(istringstream &reqstream){
         if (!(pass_stream.is_open())){
             STATUS("Couldn't open password file.")
             pass_stream.close();
-            return "";
+            return "BAD\n";
         }
 
         string password;
@@ -88,7 +84,7 @@ string req_login(istringstream &reqstream){
         if (pass_stream.fail()){
             STATUS("Error reading password file.")
             pass_stream.close();
-            return "";
+            return "BAD\n";
         }
 
         pass_stream.close();
@@ -105,7 +101,7 @@ string req_login(istringstream &reqstream){
                 if (!login_stream.is_open()){
                     STATUS("Couldn't create a login file.")
                     login_stream.close();
-                    return "";
+                    return "BAD\n";
                 }
 
                 login_stream.close();
@@ -121,36 +117,35 @@ string req_login(istringstream &reqstream){
     //Enviar resposta;
     STATUS_WA("Login message: %s",reply.c_str())
     
-    return 0;
-
+    return reply;
 }
 
-int req_logout(istringstream &reqstream){
+string req_logout(istringstream &reqstream){
     string UID, req_pass;
 
     if (!(reqstream >> UID)){
         STATUS("Logout request doesn't have UID")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Logout request doesn't have password.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Logout request format is incorrect.")
-        return -1;
+        return "ERR\n";
     }
 
     string reply = "RLO ";
@@ -179,7 +174,7 @@ int req_logout(istringstream &reqstream){
             if (!(pass_stream.is_open())){
                 STATUS("Couldn't open password file.")
                 pass_stream.close();
-                return -1;
+                return "BAD\n";
             }
 
             string password;
@@ -188,7 +183,7 @@ int req_logout(istringstream &reqstream){
             if (pass_stream.fail()){
                 STATUS("Error reading password file.")
                 pass_stream.close();
-                return -1;
+                return "BAD\n";
             }
 
             pass_stream.close();
@@ -200,7 +195,7 @@ int req_logout(istringstream &reqstream){
                 try {fs::remove(login_path);}
                 catch (const fs::filesystem_error& e) {
                     STATUS("Error deleting login file.")
-                    return -1;
+                    return "BAD\n";
                 }
 
                 reply += "OK\n";
@@ -219,32 +214,32 @@ int req_logout(istringstream &reqstream){
     return 0;
 }
 
-int req_unregister(istringstream &reqstream){
+string req_unregister(istringstream &reqstream){
     string UID, req_pass;
 
     if (!(reqstream >> UID)){
         STATUS("Unregister request doesn't have UID")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Unregister request doesn't have password.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return -1;
+        return "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Unregister request format is incorrect.")
-        return -1;
+        return "ERR\n";
     }
 
     string reply = "RUR ";
@@ -314,7 +309,7 @@ int req_unregister(istringstream &reqstream){
     return 0;
 }
 
-int req_myauctions(istringstream &reqstream){
+string req_myauctions(istringstream &reqstream){
 
     string UID;
 
@@ -382,7 +377,7 @@ int req_myauctions(istringstream &reqstream){
     return 0;
 }
 
-int req_mybids(istringstream &reqstream){
+string req_mybids(istringstream &reqstream){
     string UID;
 
     if (!(reqstream >> UID)){
@@ -457,7 +452,7 @@ string req_list(){
 
     if (!fs::exists(auctions_dir)) {
         STATUS("AUCTIONS directory does not exist")
-        return "";
+        return "BAD\n";
     } //a pasta auction assume se que ja está criada antes de correr
     else if (fs::is_empty(auctions_dir)) reply = "NOK\n";
     else {
@@ -482,13 +477,38 @@ string req_list(){
                 reply += "\n";
             } catch (const std::filesystem::filesystem_error& e) {
                 STATUS("Error accessing directory")
-                return "";
+                return "BAD\n";
             }
     }
 
     STATUS_WA("My bids server reply: %s", reply)
 
     return reply;
+}
+
+
+int handle_TCP_req(string req){
+    istringstream reqstream(req);
+    string request_type;
+
+    if (!(reqstream>>request_type)){
+        STATUS("Invalid command")
+        return -1;
+    }
+
+    if (request_type == "OPA"){
+        if (req_open(reqstream) == -1){
+            STATUS("Error during open.")
+        }
+    }
+
+    else if (request_type == "CLS"){
+        if (req_close(reqstream) == -1){
+            STATUS("Error during open.")
+        }
+    }
+
+    return 0;
 }
 
 
@@ -515,19 +535,19 @@ int handleRequest(string req){
     }
 
     else if (request_type == "UNR"){
-        if (req_logout(reqstream) == -1){
+        if (req_unregister(reqstream) == -1){
             STATUS("Error during unregister.")
         }
     }
 
     else if (request_type == "LMA"){
-        if (req_logout(reqstream) == -1){
+        if (req_myauctions(reqstream) == -1){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LMB"){
-        if (req_logout(reqstream) == -1){
+        if (req_mybids(reqstream) == -1){
             STATUS("Error during my auctions.")
         }
     }

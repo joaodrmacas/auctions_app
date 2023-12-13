@@ -4,9 +4,6 @@
 #include "user_defs.hpp"
 #include "../validations.hpp"
 
-int connect_tcp();
-int close_tcp();
-
 int cmd_login(istringstream &cmdstream);
 int cmd_logout();
 int cmd_unregister();

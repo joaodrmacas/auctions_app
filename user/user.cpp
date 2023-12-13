@@ -53,7 +53,8 @@ int main(int argc, char** argv) {
 
     get_args(argc, argv);
 
-    fs::path assets_dir = fs::path(argv[0]).parent_path().append("assets"); 
+    fs::path assets_dir = fs::path(argv[0]).parent_path().append("assets");
+    
     //cria na pasta do executavel.
     
     if(!fs::exists(assets_dir)){

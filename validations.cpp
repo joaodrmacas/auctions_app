@@ -200,7 +200,7 @@ bool is_valid_auction_name(string name){
     }
 
     for (char c : name) {
-        if (!isalnum(c)) {
+        if (!isalnum(c) && c!='-' && c!='_') {
             STATUS("Auction name should be alphanumeric.")
             return false;
         }

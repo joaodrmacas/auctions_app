@@ -135,11 +135,24 @@ int start_tcp_socket(){
 
 }
 
+int end_tcp_socket(){
+    if (close(sv.TCP.fd) == -1) {
+        STATUS("Could not close [TCP]")
+        freeaddrinfo(sv.TCP.res);
+        return -1;
+    }
+
+    freeaddrinfo(sv.TCP.res);
+    return 0;
+}
+
 int main(int argc, char** argv){
+    size_t n;
 
     get_args(argc,argv);
 
-    size_t n;
+    memset(sv.UDP.buffer,0,BUFFER_SIZE);
+    memset(sv.TCP.buffer,0,BUFFER_SIZE);
 
     //divide em tcp e udp
     pid_t pid = fork();
@@ -150,25 +163,53 @@ int main(int argc, char** argv){
 
     //TCP
     if (pid>0){
+        int newfd=0;
+
         start_tcp_socket();
 
         while(1){
             sv.TCP.addrlen = sizeof(sv.TCP.addr);
-            //...
+            newfd=accept(sv.TCP.fd,(struct sockaddr*) &sv.TCP.addr, &sv.TCP.addrlen);
+            if (newfd == -1){
+                STATUS("[TCP] - Error receiving request from user.")
+                exit(EXIT_FAILURE);
+            }
+
+            size_t req_pid = fork();
+
+            if (req_pid == 0){
+                sv.TCP.fd = newfd;  
+
+                STATUS_WA("Received request: %s", sv.TCP.buffer)
+                n = read(sv.TCP.fd,sv.TCP.buffer,BUFFER_SIZE);
+                
+                if (n<=0){
+                    if (n==0) STATUS("Empty request")
+                    else STATUS("[TCP] - Error reading request from user")
+                    exit(EXIT_FAILURE);
+                }
+
+                string request(sv.TCP.buffer);
+                handleRequest(request);
+                end_tcp_socket();
+            }
         }
 
-        //close_tcp_socket();
+        end_tcp_socket();
         
     }
+
     //UDP
     else if (pid == 0){
+
+        
         start_udp_socket();
 
         while(1){
             sv.UDP.addrlen = sizeof(sv.UDP.addr);
             n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr, &sv.UDP.addrlen);
             if (n==-1){
-                STATUS("Error on receive from user.")
+                STATUS("[UDP] - Error receiving request from user.")
                 exit(EXIT_FAILURE);
             }
 
