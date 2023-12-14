@@ -18,6 +18,7 @@
 #include <chrono>
 #include <iomanip>
 #include <filesystem>
+#include <time.h>
 
 using namespace std;
 namespace fs = filesystem;
@@ -29,7 +30,7 @@ namespace fs = filesystem;
 
 #define BUFFER_SIZE (6010)
 #define FILE_NAME_MAX_SIZE (24)
-#define FILE_MAX_SIZE (10000000 + 1)
+#define FILE_MAX_SIZE (10000000)
 #define AID_SIZE (3)
 #define NAME_MAX_LEN (10)
 #define MAX_START_VALUE (999999)
@@ -40,6 +41,7 @@ namespace fs = filesystem;
 #define MAX_BIDS_SHOWN (50)
 #define DATE_TIME_LEN (19)
 #define END_TIME_LEN (5)
+#define MAX_AUCTIONS (1000)
 
 typedef struct bid {
     string UID, date_time;
@@ -57,12 +59,6 @@ typedef struct protocol {
 #define ERR(...)                                                        \
     {                                                                   \
         printf("[ERROR]: %s | Line %d\n", __VA_ARGS__, __LINE__);   \
-        exit(1);                                                        \
-    }
-
-#define ERR(...)                                                        \
-    {                                                                   \
-        printf("[STATUS]: %s | Line %d\n", __VA_ARGS__, __LINE__);      \
         exit(1);                                                        \
     }
 

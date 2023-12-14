@@ -2,39 +2,36 @@
 
 extern sys_var sv;
 
-
+// TCP
 string req_login(istringstream &reqstream){
 
     string UID, req_pass;
-
+    
+    string reply = "RLI ";
     if (!(reqstream >> UID)){
         STATUS("Login request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Login request doesn't have password.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Login request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
-
-    //Começar a checkar o request.
-
-    string reply = "RLI ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
@@ -123,33 +120,31 @@ string req_login(istringstream &reqstream){
 string req_logout(istringstream &reqstream){
     string UID, req_pass;
 
+    string reply = "RLO ";
     if (!(reqstream >> UID)){
         STATUS("Logout request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Logout request doesn't have password.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Logout request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
-
-    string reply = "RLO ";
-
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
     fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
@@ -217,32 +212,31 @@ string req_logout(istringstream &reqstream){
 string req_unregister(istringstream &reqstream){
     string UID, req_pass;
 
+    string reply = "RUR ";
     if (!(reqstream >> UID)){
         STATUS("Unregister request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!(reqstream >> req_pass)){
         STATUS("Unregister request doesn't have password.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_pass(req_pass)) {
         STATUS("Password is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Unregister request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
-
-    string reply = "RUR ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
@@ -313,22 +307,21 @@ string req_myauctions(istringstream &reqstream){
 
     string UID;
 
+    string reply = "RMA ";
     if (!(reqstream >> UID)){
         STATUS("My auctions request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("My auctions request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
-
-    string reply = "RMA ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append((UID + "_login.txt"));
@@ -384,22 +377,21 @@ string req_myauctions(istringstream &reqstream){
 string req_mybids(istringstream &reqstream){
     string UID;
 
+    string reply = "RMB ";
     if (!(reqstream >> UID)){
         STATUS("My auctions request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_UID(UID)){
         STATUS("UID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("My auctions request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
-
-    string reply = "RMB ";
 
     fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
     fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
@@ -450,7 +442,6 @@ string req_mybids(istringstream &reqstream){
 }
 
 string req_list(){
-
     string reply = "RLS ";
 
     fs::path auctions_dir = fs::path(AUCTIONS_DIR_PATH);
@@ -496,23 +487,24 @@ string req_list(){
     return reply;
 }
 
-
 //falta atualizar o timeactive sempre que se usa isto;
 string req_showrecord(istringstream &reqstream){
     string AID;
+
+    string reply = "RSR ";
     if (!(reqstream >> AID)){
         STATUS("My auctions request doesn't have UID")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!is_valid_AID(AID)){
         STATUS("AID is not correctly formatted.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     if (!reqstream.eof()){
         STATUS("Show record request format is incorrect.")
-        return "ERR\n";
+        return reply + "ERR\n";
     }
 
     string reply = "RRC ";
@@ -532,11 +524,10 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-
             string host_uid,name,asset_fname,start_date;
             int start_value, timeactive, start_date_secs;
 
-            if (!(reqstream >> host_uid)){
+            if (!(start_stream >> host_uid)){
                 STATUS("Start file doesn't have Host_UID")
                 return "BAD\n";
             }
@@ -546,7 +537,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> name)){
+            if (!(start_stream >> name)){
                 STATUS("Start file doesn't have auction name")
                 return "BAD\n";
             }
@@ -556,7 +547,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> asset_fname)){
+            if (!(start_stream >> asset_fname)){
                 STATUS("Start file doesn't have asset name")
                 return "BAD\n";
             }
@@ -566,7 +557,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> start_value)){
+            if (!(start_stream >> start_value)){
                 STATUS("Start file doesn't have start value")
                 return "BAD\n";
             }
@@ -576,7 +567,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> timeactive)){
+            if (!(start_stream >> timeactive)){
                 STATUS("Start file doesn't have time active")
                 return "BAD\n";
             }
@@ -586,7 +577,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> start_date)){
+            if (!(start_stream >> start_date)){
                 STATUS("Start file doesn't have start date")
                 return "BAD\n";
             }
@@ -596,8 +587,13 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!(reqstream >> start_date_secs)){
+            if (!(start_stream >> start_date_secs)){
                 STATUS("Start file doesn't have a start date in seconds")
+                return "BAD\n";
+            }
+
+            if (is_valid_start_time(start_date_secs)){
+                STATUS("Start file has a incorrectly formatted start date in seconds")
                 return "BAD\n";
             }
 
@@ -607,17 +603,30 @@ string req_showrecord(istringstream &reqstream){
             + " " + start_date + " " + to_string(timeactive);
 
             //checkar se alguem biddou;
-
             fs::path bids_directory = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
 
             if (fs::exists(bids_directory) && !(fs::is_empty(bids_directory))){
+                vector<string> file_names;
+
                 try {
 
                     for (const auto& entry : fs::directory_iterator(bids_directory)) {
-                        if (fs::is_regular_file(entry.path())) { // Reply este if é preciso
-                            string bid_value_str, bid_filename = entry.path();
+                        if (fs::is_regular_file(entry.path())) {
+                            file_names.push_back(entry.path().filename().string());
+                        }
+                    }
 
-                            fs::path curr_bid_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(bid_filename);
+                    std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
+
+
+                    int len = file_names.size();
+
+                    for (int i=0; i<len; i++){
+                        if (i >= MAX_BIDS_SHOWN) break;
+
+                        if (fs::is_regular_file(file_names[i])) {
+
+                            fs::path curr_bid_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
                             
                             ifstream bid_stream(curr_bid_file);
 
@@ -665,21 +674,26 @@ string req_showrecord(istringstream &reqstream){
                                 return "BAD\n";
                             }
 
-                            reply += " B " + uid + " " + to_string(start_value) + " "
-                                        + start_date + " " + to_string(bid_date_secs);
+                            if (!is_valid_time_seconds(bid_date_secs,timeactive)){
+                                STATUS("Bid file has a incorrectly formatted date in seconds")
+                                return "BAD\n";
+                            }
+
+                            reply += " B " + uid + " " + to_string(start_value) + " " + start_date + " " + to_string(bid_date_secs);
 
                         }
+                        else i--; //nao leu um ficheiro (probably um dir)
                     }
-                } catch (const exception& e) {
+                    
+                }catch (const exception& e) {
                     STATUS("Error accessing directory");
                     return "BAD\n";
                 }
                 
 
-
             }
             
-            //checkar se a auction ja acabou e se já escrever o [E ...]
+            //checkar se a auction ja acabou e se ja escrever o [E ...]
             fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
             if (fs::exists(end_auction_file)){
                 ifstream end_stream(end_auction_file);
@@ -706,10 +720,10 @@ string req_showrecord(istringstream &reqstream){
                     STATUS("End file doesn't have a end date in seconds")
                     return "BAD\n";
                 }
+
+                reply += " E " + end_datetime + " " + end_sec_time + "\n";
             }
             else reply += "\n";
-
-
 
         }
         else return "BAD\n"; //A auction existe mas nao tem start file
@@ -721,10 +735,561 @@ string req_showrecord(istringstream &reqstream){
     return reply;
 }
 
-int handle_TCP_req(string req){
-    istringstream reqstream(req);
-    string request_type;
-    string reply;
+
+// TCP
+string req_open(istringstream &reqstream){
+    string UID, req_pass;
+
+    string reply = "ROA ";
+    if (!(reqstream >> UID)) {
+        STATUS("Unregister request doesn't have UID")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_UID(UID)) {
+        STATUS("UID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> req_pass)) {
+        STATUS("Unregister request doesn't have password.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_pass(req_pass)) {
+        STATUS("Password is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+    
+    string name;
+    if (!(reqstream >> name)) {
+        STATUS("Open request doesn't have password.")
+        return reply + "ERR\n";
+    }
+    
+    int start_value;
+    if (!(reqstream >> start_value)) {
+        STATUS("Open request doesn't have value.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_bid_value(start_value)) {
+        STATUS("Start value is not valid.")
+        return reply + "ERR\n";
+    }
+
+    int timeactive;
+    if ( !(reqstream >> timeactive)){
+        STATUS("Timeactive is not a valid integer.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_timeactive(timeactive)){
+        STATUS_WA("Timeactive is not valid. (Max time is %d)", MAX_TIME_ACTIVE);
+        return reply + "ERR\n";
+    }
+
+    string asset_fname;
+    if (!(reqstream >> asset_fname)) {
+        STATUS("Open request doesn't have asset filename.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_fname(asset_fname)) {
+        STATUS("Asset filename is not valid.")
+        return reply + "ERR\n";
+    }
+
+    int asset_fsize;
+    if (!(reqstream >> asset_fsize)) {
+        STATUS("Open request doesn't have asset filesize.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_fsize(asset_fsize)) {
+        STATUS("Asset filesize is not valid.")
+        return reply + "ERR\n";
+    }
+
+    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+
+    //OK - user_dir existe, login existe e pass está correta
+    //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
+    //NLG -  user não está logged in ou não existe
+    if(fs::exists(pass_path) && fs::exists(login_path)){
+        ifstream pass_stream(pass_path);
+
+        if (!(pass_stream.is_open())){
+            STATUS("Couldn't open password file.")
+            return "BAD\n";
+        }
+
+        string password;
+        getline(pass_stream,password); // reply como a pass é alfanumerica, podemos so apanhar a primeira linha?
+
+        if (pass_stream.fail()){
+            STATUS("Error reading password file.")
+            return "BAD\n";
+        }
+
+        pass_stream.close();
+
+        if (req_pass == password) {
+
+            // get AID from sv.next_AID
+            char cAID[4];
+            sprintf(cAID, "%03d", sv.next_AID);
+            string AID = string(cAID);
+
+            // cria os paths para a auction
+            fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+            fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+            fs::path bids_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+            fs::path assets_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
+            fs::path asset_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
+
+            // cria as diretorias a partir dos paths
+            if (!fs::create_directory(auction_dir)) {
+                STATUS("Error creating auction directory.")
+                return "BAD\n";
+            }
+
+            if (!fs::create_directory(bids_auction_dir)) {
+                STATUS("Error creating bids directory.")
+                return "BAD\n";
+            }
+
+            if (!fs::create_directory(assets_auction_dir)) {
+                STATUS("Error creating assets directory.")
+                return "BAD\n";
+            }
+            
+
+            // cria o ficheiro de start
+            ofstream start_stream(start_auction_file);
+
+            if (!(start_stream.is_open())){
+                STATUS("Couldn't create start auction file")
+                return "BAD\n";
+            }
+
+            // escrever para o ficheiro UID name asset_fname start_value timeactive start_datetime start_fulltime
+            // calculo do start_datetime e start_fulltime
+            time_t fulltime;
+            struct tm *current_time;
+            char timestr[20];
+            current_time = gmtime(&fulltime);
+            
+            
+            sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", \
+            current_time->tm_year+1900,current_time->tm_mon+1,\
+            current_time->tm_mday,current_time->tm_hour,\
+            current_time->tm_min,current_time->tm_sec);
+            
+
+            start_stream << UID << " " << name << " " << asset_fname << " " << start_value <<
+                            " " << timeactive << " " << time(&fulltime) << " " << timestr << endl;
+
+            start_stream.close();
+            
+            ofstream asset_stream(asset_file);
+
+            if (!(asset_stream.is_open())){
+                STATUS("Couldn't create asset file")
+                return "BAD\n";
+            }
+            
+            
+
+            return reply + "OK\n";
+        }
+        else return reply + "NOK\n";  //Login existe mas pass errada
+    }
+    else return reply + "NLG\n"; //o user não está logado
+
+    //Enviar mensagem
+    return reply;
+}
+
+string req_close(istringstream &reqstream){
+    string UID, req_pass, AID;
+    string reply = "RCL ";
+
+    if (!(reqstream >> UID)){
+        STATUS("Close request doesn't have UID")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_UID(UID)){
+        STATUS("UID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> req_pass)){
+        STATUS("Close request doesn't have password.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_pass(req_pass)) {
+        STATUS("Password is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> AID)){
+        STATUS("Close request doesn't have AID")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_AID(AID)){
+        STATUS("AID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!reqstream.eof()){
+        STATUS("Close request format is incorrect.")
+        return reply + "ERR\n";
+    }
+
+    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+
+    
+    if(fs::exists(user_dir)){
+
+        if (fs::exists(login_path)){
+
+            ifstream pass_stream(pass_path);
+
+            if (!(pass_stream.is_open())){
+                STATUS("Couldn't open password file.")
+                pass_stream.close();
+                return "BAD\n";
+            }
+
+            string password;
+            getline(pass_stream,password); 
+
+            if (pass_stream.fail()){
+                STATUS("Error reading password file.")
+                pass_stream.close();
+                return "BAD\n";
+            }
+
+            pass_stream.close();
+
+            
+            if (req_pass == password){
+                
+                fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+                fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                fs::path user_auction_hosted_file = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+
+                //checkar se o auction existe
+                if (!fs::exists(curr_auction_dir)){
+                    
+                    //checkar se o auction é do user
+                    if (fs::exists(user_auction_hosted_file)){
+
+                        //checkar se a auction está terminada
+                        if (!fs::exists(end_auction_file)){
+
+                            ofstream end_stream(end_auction_file);
+                            time_t fulltime;
+                            struct tm *current_time;
+                            char timestr[20];
+
+                            if (!(end_stream.is_open())){
+                                STATUS("Couldn't create end auction file")
+                                end_stream.close();
+                                return "BAD\n";
+                            }
+                            
+                            current_time = gmtime(&fulltime);
+                            sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", \
+                            current_time->tm_year+1900,current_time->tm_mon+1,\
+                            current_time->tm_mday,current_time->tm_hour,\
+                            current_time->tm_min,current_time->tm_sec);   
+
+                            end_stream << timestr << " " << time(&fulltime);  
+
+                            end_stream.close();
+
+                            reply += "OK\n";
+
+                        }
+                        else reply += "END\n";
+                    }
+                    else reply += "EOW\n";
+                }
+                else reply += "EAU\n";
+            }
+            else reply += "NOK\n";  //Login existe mas pass está errada
+        }
+        else reply += "NLG\n";
+    }
+    else reply += "NOK\n";
+
+    //mandar mensagem
+
+    STATUS_WA("Logout message: %s",reply.c_str())
+
+    return reply;
+}
+
+string req_bid(istringstream &reqstream){
+    string UID, req_pass, AID;
+    int value;
+    
+    string reply = "RBD ";
+    if (!(reqstream >> UID)){
+        STATUS("Bid request doesn't have UID")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_UID(UID)){
+        STATUS("UID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> req_pass)){
+        STATUS("Bid request doesn't have password.")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_pass(req_pass)) {
+        STATUS("Password is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> AID)){
+        STATUS("Bid request doesn't have AID")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_AID(AID)){
+        STATUS("AID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!(reqstream >> value)){
+        STATUS("Bid request doesn't have a value")
+        return reply + "ERR\n";
+    }
+
+    if (!is_valid_bid_value(value)){
+        STATUS("AID is not correctly formatted.")
+        return reply + "ERR\n";
+    }
+
+    if (!reqstream.eof()){
+        STATUS("Bid request format is incorrect.")
+        return reply + "ERR\n";
+    }
+
+    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+
+    
+    if(fs::exists(user_dir)){
+
+        if (fs::exists(login_path)){
+
+            ifstream pass_stream(pass_path);
+
+            if (!(pass_stream.is_open())){
+                STATUS("Couldn't open password file.")
+                pass_stream.close();
+                return "BAD\n";
+            }
+
+            string password;
+            getline(pass_stream,password); 
+
+            if (pass_stream.fail()){
+                STATUS("Error reading password file.")
+                pass_stream.close();
+                return "BAD\n";
+            }
+
+            pass_stream.close();
+
+            
+            if (req_pass == password){
+                
+                fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+                fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                fs::path user_auction_hosted_file = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+
+                
+                if (!fs::exists(curr_auction_dir)){
+                    
+                    //checkar se o auction e do user
+                    if (!fs::exists(user_auction_hosted_file)){
+
+                        //checkar se a auction esta terminada
+                        if (!fs::exists(end_auction_file)){
+
+                            fs::path bids_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+
+                            vector<string> file_names;
+                            try {
+
+                                for (const auto& entry : fs::directory_iterator(bids_dir)) {
+                                    if (fs::is_regular_file(entry.path())) {
+                                        file_names.push_back(entry.path().stem().string());
+                                    }
+                                }
+                                
+                                std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
+
+                            } catch (const exception& ex) {
+                                STATUS("Error accessing directory")
+                                return "BAD\n";
+                            }
+
+                            int highest_bid=0;
+
+                            highest_bid = stoi(file_names[0]);
+
+                            if (!is_valid_bid_value(highest_bid)){
+                                STATUS("Highest value is not correctly formatted")
+                                return "BAD\n";
+                            }
+
+                            if (value <= highest_bid){ //a bid é menor do que a maior
+                                return reply + "REF\n"; 
+                            }
+                            else { //Meter nos bidded
+
+                                char fname[7];
+                                sprintf(fname, "%06d", value);
+                                fs::path user_bidded_file = fs::path(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
+
+                                ofstream bid_stream(user_bidded_file);
+                                
+                                if (!bid_stream.is_open()){
+                                    STATUS("Couldn't create bid file in user directory")
+                                    bid_stream.close();
+                                    return "BAD\n";
+                                }
+
+                                bid_stream.close();
+
+                                fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+                                ifstream start_stream(start_auction_file);
+
+                                if (!start_stream.is_open()){
+                                    STATUS("Could not open start auction file.");
+                                    start_stream.close();
+                                    return "BAD\n";
+                                }
+                                string trash;
+                                int start_time_secs;
+                                if (!(start_stream>>trash>>trash>>trash>>trash>>trash>>trash>>start_time_secs)){
+                                    STATUS("Error reading from START file")
+                                    start_stream.close();
+                                    return "BAD\n";
+                                }
+                                
+                                start_stream.close();
+
+                                if (!is_valid_start_time(start_time_secs)){
+                                    STATUS("Start time is not valid")
+                                    return "BAD\n";
+                                }
+
+                                fs::path auctions_bidded_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(string(fname) + ".txt");
+                                
+        
+                                bid_stream = ofstream(auctions_bidded_file);
+
+                                if (!bid_stream.is_open()){
+                                    STATUS("Couldn't create bid file in auctions directory")
+                                    bid_stream.close();
+                                    return "BAD\n";
+                                }
+
+                                time_t fulltime;
+                                struct tm *current_time;
+                                char timestr[20];
+
+                                current_time = gmtime(&fulltime);
+                                sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", \
+                                current_time->tm_year+1900,current_time->tm_mon+1,\
+                                current_time->tm_mday,current_time->tm_hour,\
+                                current_time->tm_min,current_time->tm_sec);  
+
+
+                                if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - time(NULL)))){
+                                    STATUS("Couldn't write to bid file")
+                                    bid_stream.close();
+                                    return "BAD\n";
+                                }
+
+                                bid_stream.close();
+
+                                reply += "OK\n";
+                            }
+
+                            
+                        }
+                        else reply += "AID\n"; //AID is not active
+                    }
+                    else reply += "ILG\n"; //Auction is hosted my user
+                }
+                else reply += "AID\n";//checkar se o auction existe
+            }
+            else reply += "NOK\n";  //Login existe mas pass esta errada
+        }
+        else reply += "NLG\n"; //User not logged in
+    }
+    else reply += "NOK\n"; //User doesnt exist
+
+    //mandar mensagem
+
+    STATUS_WA("Logout message: %s",reply.c_str())
+
+    return reply;
+}
+
+
+// Handle
+int handle_TCP_req() {
+    bool err_with_st = false;
+
+    string sbuff;
+    size_t n = 0;
+    // 76 is the max length of the reply without the last space and the Fdata of the open command
+    for (int total_n = 0; total_n < 76; total_n += n) {
+        n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+        
+        if (n < 0) {
+            STATUS("Could not receive tcp reply.")
+            return -1;
+        }
+        if (n == 0) {
+            STATUS("No more bytes in tcp message.")
+            if (sbuff[total_n - 1] == '\n')
+                sbuff[total_n - 1] = '\0';
+            else {
+                STATUS("No newline at the end of the message.")
+                err_with_st = true;
+            }
+            break;
+        }
+
+        sv.TCP.buffer[n] = '\0';
+        sbuff += string(sv.TCP.buffer);
+    }
+
+    LOG_WA(sv.verbose,"Received request: %s", sbuff.c_str())
+
+    istringstream reqstream(string(sv.TCP.buffer));
+    string request_type, reply;
 
     if (!(reqstream>>request_type)){
         STATUS("Invalid command")
@@ -732,40 +1297,53 @@ int handle_TCP_req(string req){
     }
 
     if (request_type == "OPA"){
-        reply = req_open(reqstream);
-        if (reply == ""){
-            STATUS("Error during open.")
-            return -1;
+        if (err_with_st) reply = reply + "ERR\n";
+        else {
+            reply = req_open(reqstream);
+            if (reply == ""){
+                STATUS("Error during open.")
+                return -1;
+            }
         }
     }
 
     else if (request_type == "CLS"){
-        reply = req_close(reqstream);
-        if (reply == ""){
-            STATUS("Error during open.")
-            return -1;
+        if (err_with_st) reply = "RCL ERR\n";
+        else {
+            reply = req_close(reqstream);
+            if (reply == ""){
+                STATUS("Error during close.")
+                return -1;
+            }
         }
     }
 
     else if (request_type == "SAS"){
-        reply = req_showasset(reqstream);
-        if (reply == ""){
-            STATUS("Error during show asset.")
-            return -1;
+        if (err_with_st) reply = "RSA ERR\n";
+        else {
+            reply = req_showasset(reqstream);
+            if (reply == ""){
+                STATUS("Error during show asset.")
+                return -1;
+            }
         }
     }
     
     else if (request_type == "BID"){
-        reply = req_bid(reqstream);
-        if (reply == ""){
-            STATUS("Error during bid.")
-            return -1;
+        if (err_with_st) reply = "RBD ERR\n";
+        else {
+            reply = req_bid(reqstream);
+            if (reply == ""){
+                STATUS("Error during bid.")
+                return -1;
+            }
         }
     }
-
-    else reply = "ERR\n";
+    else reply = reply + "ERR\n";
 
     //send reply
+
+    STATUS_WA("Message sent: %s",reply.c_str())
 
     return 0;
 }
@@ -775,6 +1353,7 @@ int handle_UDP_req(string req){
     istringstream reqstream(req);
     string request_type;
     string reply;
+    int n;
 
     if (!(reqstream>>request_type)){
         STATUS("Invalid command")
@@ -831,11 +1410,17 @@ int handle_UDP_req(string req){
     }
 
     else{
-        reply = "ERR\n";
+        reply = reply + "ERR\n";
         STATUS("Invalid request.")
     }
 
-    //mandar reply
+    n = sendto(sv.UDP.fd,reply.c_str(),reply.length(),0,(struct sockaddr*) &sv.UDP.addr,sv.UDP.addrlen);
+    if (n==-1){
+        STATUS("Could not send message")
+        exit(EXIT_FAILURE);
+    }
 
-    return 0;
+    STATUS("Message sent")
+
+    exit(EXIT_SUCCESS);
 }

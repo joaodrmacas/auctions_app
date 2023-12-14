@@ -165,6 +165,7 @@ bool is_valid_UID(string UID){
 }
 
 bool is_valid_timeactive(int timeactive){
+
     if (timeactive>MAX_TIME_ACTIVE) {
         STATUS("timeactive is higher than max_time.")
         return false;
@@ -175,6 +176,14 @@ bool is_valid_timeactive(int timeactive){
         return false;
     }
     return true;
+}
+
+bool is_valid_time_seconds(int time, int timeactive){
+    return is_valid_timeactive(time) && time <= timeactive;
+}
+
+bool is_valid_start_time(int start_time){
+    return start_time>=0;
 }
 
 bool is_valid_pass(string pass){

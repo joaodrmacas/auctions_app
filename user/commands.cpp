@@ -168,7 +168,13 @@ int cmd_login(istringstream &cmdstream) {
     }
     
     // Retirar o \n no final e colocar \0
-    sv.UDP.buffer[n-1]='\0';
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Login reply received: %s", sv.UDP.buffer);
 
@@ -240,7 +246,13 @@ int cmd_logout() {
     }
 
     // Retirar o \n no final e colocar \0
-    sv.UDP.buffer[n-1]='\0';
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Logout reply received: %s", sv.UDP.buffer);
 
@@ -313,7 +325,13 @@ int cmd_unregister() {
     }
 
     // Retirar o \n no final e colocar \0
-    sv.UDP.buffer[n-1]='\0';
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Unregister reply received: %s", sv.UDP.buffer);
 
@@ -460,21 +478,16 @@ int cmd_open(istringstream &cmdstream) {
         STATUS_WA("Open message sent (if too big, 1st %d bytes): %s", 90,
                     sbuff.substr(0, min(90, static_cast<int>(sbuff.length()))).c_str())
 
-        if (!fasset.eof()) {
-            while(!fasset.eof()) {
-                size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
-                if (n != sbuff.length()) {
-                    MSG("Something went wrong.")
-                    STATUS("Could not send open message")
-                    return -1;
-                }
+        while(!fasset.eof()) {
+            size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+            if (n != sbuff.length()) {
+                MSG("Something went wrong.")
+                STATUS("Could not send open message")
+                return -1;
+            }
 
-                fasset.read(sv.TCP.buffer, BUFFER_SIZE);
-                if ((fasset.fail() || fasset.bad()) && !fasset.eof()) {
-                    MSG("Something went wrong.")
-                    STATUS("Could not read asset file")
-                    return -1;
-                }
+            fasset.read(sv.TCP.buffer, BUFFER_SIZE);
+            if ((fasset.fail() || fasset.bad()) && !fasset.eof()) {
                 MSG("Something went wrong.")
                 STATUS("Could not read asset file")
                 return -1;
@@ -530,7 +543,13 @@ int cmd_open(istringstream &cmdstream) {
     }
 
     // Retirar o \n no final e colocar \0
-    sv.TCP.buffer[old_n-1] = '\0';
+    if (sv.TCP.buffer[old_n-1] == '\n')
+        sv.TCP.buffer[old_n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Open reply received: %s", sv.TCP.buffer);
 
@@ -650,7 +669,13 @@ int cmd_close(istringstream &cmdstream){
     }
 
     // Retirar o \n no final e colocar \0
-    sv.TCP.buffer[old_n-1] = '\0';
+    if (sv.TCP.buffer[old_n-1] == '\n')
+        sv.TCP.buffer[old_n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Close reply received: %s", sv.TCP.buffer);
 
@@ -718,7 +743,14 @@ int cmd_myauctions(){
         return -1;
     }
 
-    sv.UDP.buffer[n-1] = '\0';
+    // Retirar o \n no final e colocar \0
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("My auctions reply received: %s", sv.UDP.buffer)
     istringstream reply(string(sv.UDP.buffer));
@@ -810,7 +842,14 @@ int cmd_mybids(){
         return -1;
     }
 
-    sv.UDP.buffer[n-1] = '\0';
+    // Retirar o \n no final e colocar \0
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("My bids reply received: %s", sv.UDP.buffer)
 
@@ -901,7 +940,14 @@ int cmd_list(){
         return -1;
     }
 
-    sv.UDP.buffer[n-1] = '\0';
+    // Retirar o \n no final e colocar \0
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("List reply received: %s", sv.UDP.buffer)
 
@@ -1002,8 +1048,8 @@ int cmd_show_asset(istringstream &cmdstream){
 
     // Reply
     sbuff = "";
-    // 42 Bytes is the total max lenght of the show_asset reply without the Fdata
-    for (int total_n = 0; total_n < 42; total_n += n) {
+    // 40 Bytes is the total max lenght of the show_asset reply without the Fdata
+    for (int total_n = 0; total_n < 40; total_n += n) {
         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
         
         if (n < 0) {
@@ -1013,7 +1059,16 @@ int cmd_show_asset(istringstream &cmdstream){
         }
         if (n == 0) {
             STATUS("No more bytes in show_asset reply.")
-            sbuff[total_n - 1] = '\0';
+
+            // Retirar o \n no final e colocar \0
+            if (sbuff[total_n - 1] == '\n')
+                sbuff[total_n - 1] = '\0';
+            else {
+                MSG("Something went wrong.")
+                STATUS("No newline at the end of the message.")
+                return -1;
+            }
+
             break;
         }
 
@@ -1022,8 +1077,9 @@ int cmd_show_asset(istringstream &cmdstream){
 
     }
     
-    STATUS_WA("Show asset reply received: %s", sbuff.c_str());
-    
+    STATUS_WA("Show asset reply received (if too big, 1st %d bytes): %s", 90,
+                    sbuff.substr(0, min(90, static_cast<int>(sbuff.length()))).c_str())
+
     istringstream reply(sbuff);
 
     string opcode;
@@ -1105,7 +1161,15 @@ int cmd_show_asset(istringstream &cmdstream){
                 old_n = n;
             }
 
-            sv.TCP.buffer[old_n-1] = '\0';
+            // Retirar o \n no final e colocar \0
+            if (sv.TCP.buffer[n-1] == '\n')
+                sv.TCP.buffer[n-1] = '\0';
+            else {
+                MSG("Something went wrong.")
+                STATUS("No newline at the end of the message.")
+                return -1;
+            }
+
             reply = istringstream(sv.TCP.buffer);
 
             if (!(outputFile << reply.rdbuf())){
@@ -1208,7 +1272,13 @@ int cmd_bid(istringstream &cmdstream){
     }
 
     // Retirar o \n no final e colocar \0
-    sv.TCP.buffer[old_n-1] = '\0';
+    if (sv.TCP.buffer[old_n-1] == '\n')
+        sv.TCP.buffer[old_n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Close reply received: %s", sv.TCP.buffer);
 
@@ -1289,7 +1359,14 @@ int cmd_show_records(istringstream &cmdstream){
         return -1;
     }
 
-    sv.UDP.buffer[n-1]='\0';
+    // Retirar o \n no final e colocar \0
+    if (sv.UDP.buffer[n-1] == '\n')
+        sv.UDP.buffer[n-1] = '\0';
+    else {
+        MSG("Something went wrong.")
+        STATUS("No newline at the end of the message.")
+        return -1;
+    }
 
     STATUS_WA("Show records reply received: %s", sv.UDP.buffer);
 
@@ -1431,7 +1508,7 @@ int cmd_show_records(istringstream &cmdstream){
                         return -1;
                     }
 
-                    if (!is_valid_timeactive(end_sec) && end_sec < timeactive){
+                    if (!is_valid_time_seconds(end_sec, timeactive)){
                         MSG("Something went wrong.")
                         STATUS("End time is not valid.")
                         return -1;

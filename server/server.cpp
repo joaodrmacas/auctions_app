@@ -51,17 +51,6 @@ void get_args(int argc, char **argv){
     }
 }
 
-int output_request(string UID,string request,string ip,string port){
-    if (!sv.verbose) return 0;
-    //Checkar o tipo de request
-    if (!is_valid_UID(UID) || !is_valid_ip(ip) || !is_valid_port(port)){
-        LOG(sv.verbose, "Invalid request.")
-        return -1;
-    }
-    LOG_WA(sv.verbose, "%s request by %s received:\nip:%s\nport:%s", request.c_str(),UID.c_str(),ip.c_str(),port.c_str())
-    return 0;
-}
-
 int start_udp_socket() {
     // UDP SOCKET
     sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
@@ -151,8 +140,42 @@ int main(int argc, char** argv){
 
     get_args(argc,argv);
 
-    memset(sv.UDP.buffer,0,BUFFER_SIZE);
-    memset(sv.TCP.buffer,0,BUFFER_SIZE);
+    fs::path users_dir = USERS_DIR_PATH;
+    fs::path auctions_dir = AUCTIONS_DIR_PATH;
+
+    
+    if(fs::exists(users_dir)){
+        if (!fs::remove_all(users_dir)){
+            STATUS("Failed to delete assets directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (fs::create_directory(users_dir)){
+        STATUS("Assets directory created successfully")
+    }
+    else {
+        STATUS("Failed to create USERS directory.")
+        exit(EXIT_FAILURE);
+    }
+
+    if(fs::exists(auctions_dir)){
+        if (!fs::remove_all(auctions_dir)){
+            STATUS("Failed to delete assets directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (fs::create_directory(auctions_dir)){
+        STATUS("Assets directory created successfully")
+    }
+    else {
+        STATUS("Failed to create AUCTIONS directory.")
+        exit(EXIT_FAILURE);
+    }
+
+    memset(sv.UDP.buffer,0,BUFFER_SIZE + 1);
+    memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
 
     //divide em tcp e udp
     pid_t pid = fork();
@@ -165,7 +188,9 @@ int main(int argc, char** argv){
     if (pid>0){
         int newfd=0;
 
-        start_tcp_socket();
+        if (start_tcp_socket() == -1){
+            exit(EXIT_FAILURE);
+        }
 
         while(1){
             sv.TCP.addrlen = sizeof(sv.TCP.addr);
@@ -178,26 +203,17 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
-                sv.TCP.fd = newfd;  
 
-                STATUS_WA("Received request: %s", sv.TCP.buffer)
-                n = read(sv.TCP.fd,sv.TCP.buffer,BUFFER_SIZE);
-                
-                if (n<=0){
-                    if (n==0) STATUS("Empty request")
-                    else STATUS("[TCP] - Error reading request from user")
-                    exit(EXIT_FAILURE);
-                }
+                sv.TCP.fd = newfd;
 
-                string request(sv.TCP.buffer);
-                handle_TCP_Request(request);
+                int status = handle_TCP_req();
                 end_tcp_socket();
 
-                exit(EXIT_SUCCESS);
+                exit(status);
             }
         }
 
-        end_tcp_socket();
+        exit(end_tcp_socket());
         
     }
 
@@ -205,7 +221,9 @@ int main(int argc, char** argv){
     else if (pid == 0){
 
         
-        start_udp_socket();
+        if (start_udp_socket()==-1){
+            exit(EXIT_FAILURE);
+        }
 
         while(1){
             sv.UDP.addrlen = sizeof(sv.UDP.addr);
@@ -218,14 +236,14 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
-                STATUS_WA("Received request: %s",sv.UDP.buffer)
+                LOG_WA(sv.verbose, "Received request: %s",sv.UDP.buffer)
                 string request(sv.UDP.buffer);
                 exit(handle_UDP_req(request));
             }
 
         }
 
-        end_udp_socket();
+        exit(end_udp_socket());
     }
 
 

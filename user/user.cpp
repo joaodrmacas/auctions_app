@@ -53,23 +53,26 @@ int main(int argc, char** argv) {
 
     get_args(argc, argv);
 
-    fs::path assets_dir = fs::path(argv[0]).parent_path().append("assets");
+    fs::path assets_dir = "assets";
     
-    //cria na pasta do executavel.
-    
-    if(!fs::exists(assets_dir)){
-        if (fs::create_directory(assets_dir)){
-            STATUS("Assets directory created successfully")
-        }
-        else {
-            MSG("Something went wrong.")
-            STATUS("Failed to create assests directory.")
+    if(fs::exists(assets_dir)){
+        if (!fs::remove_all(assets_dir)){
+            STATUS("Failed to delete assets directory.")
             exit(EXIT_FAILURE);
         }
     }
+
+    if (fs::create_directory(assets_dir)){
+        STATUS("Assets directory created successfully")
+    }
+    else {
+        STATUS("Failed to create assests directory.")
+        exit(EXIT_FAILURE);
+    }
     
-    memset(sv.UDP.buffer,0,BUFFER_SIZE);
-    memset(sv.TCP.buffer,0,BUFFER_SIZE);
+    
+    memset(sv.UDP.buffer,0,BUFFER_SIZE + 1);
+    memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
 
     while(!sv.to_exit){
         cout << "> ";
