@@ -348,7 +348,13 @@ string req_myauctions(istringstream &reqstream){
                         string AID;
                         AID = entry.path().stem().string();
 
+                        if (!is_valid_AID(AID)){
+                            STATUS("Auction file name is not a valid AID.")
+                            return "BAD\n";
+                        }
+
                         reply += " " + AID;
+
 
                         fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
                         fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
@@ -413,6 +419,11 @@ string req_mybids(istringstream &reqstream){
                         string AID;
                         AID = entry.path().stem().string();
 
+                        if (!is_valid_AID(AID)){
+                            STATUS("Auction file name is not a valid AID.")
+                            return "BAD\n";
+                        }
+
                         reply += " " + AID;
 
                         fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
@@ -457,6 +468,11 @@ string req_list(){
                         string AID;
                         AID = entry.path().stem().string();
 
+                        if (!is_valid_AID(AID)){
+                                STATUS("Auction file name is not a valid AID.")
+                                return "BAD\n";
+                        }
+
                         reply += " " + AID;
 
                         fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
@@ -476,6 +492,203 @@ string req_list(){
     }
 
     STATUS_WA("My bids server reply: %s", reply)
+
+    return reply;
+}
+
+
+//falta atualizar o timeactive sempre que se usa isto;
+string req_showrecord(istringstream &reqstream){
+    string AID;
+    if (!(reqstream >> AID)){
+        STATUS("My auctions request doesn't have UID")
+        return "ERR\n";
+    }
+
+    if (!is_valid_AID(AID)){
+        STATUS("AID is not correctly formatted.")
+        return "ERR\n";
+    }
+
+    if (!reqstream.eof()){
+        STATUS("Show record request format is incorrect.")
+        return "ERR\n";
+    }
+
+    string reply = "RRC ";
+
+    fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+    fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+
+    if (fs::exists(auction_dir)){
+        if (fs::exists(start_auction_file)){
+            reply += "OK ";
+
+            ifstream start_stream(start_auction_file);
+
+            if (!(start_stream.is_open())){
+                STATUS("Couldn't open start auction file.")
+                start_stream.close();
+                return "BAD\n";
+            }
+
+
+            string host_uid,name,asset_fname,start_date;
+            int start_value, timeactive, start_date_secs;
+
+            if (!(info_stream >> host_uid)){
+                STATUS("Start file doesn't have Host_UID")
+                return "BAD\n";
+            }
+
+            if (!is_valid_UID(host_uid)){
+                STATUS("Start file has a incorrectly formatted host_uid")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> name)){
+                STATUS("Start file doesn't have auction name")
+                return "BAD\n";
+            }
+
+            if (!is_valid_auction_name(name)){
+                STATUS("Start file has a incorrectly formatted auction name")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> asset_fname)){
+                STATUS("Start file doesn't have asset name")
+                return "BAD\n";
+            }
+
+            if (!is_valid_fname(asset_fname)){
+                STATUS("Start file has a incorrectly formatted asset name")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> start_value)){
+                STATUS("Start file doesn't have start value")
+                return "BAD\n";
+            }
+
+            if (!is_valid_bid_value(start_value)){
+                STATUS("Start file has a incorrectly formatted start value")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> timeactive)){
+                STATUS("Start file doesn't have time active")
+                return "BAD\n";
+            }
+
+            if (!is_valid_timeactive(timeactive)){
+                STATUS("Start file has a incorrectly formatted time active")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> start_date)){
+                STATUS("Start file doesn't have start date")
+                return "BAD\n";
+            }
+
+            if (!is_valid_date_time(start_date)){
+                STATUS("Start file has a incorrectly formatted start date")
+                return "BAD\n";
+            }
+
+            if (!(info_stream >> start_date_secs)){
+                STATUS("Start file doesn't have a start date in seconds")
+                return "BAD\n";
+            }
+
+            start_stream.close();
+
+            reply += host_UID + " " + name + " " + asset_fname + " " + start_value \
+            + " " + start_date + " " + timeactive;
+
+            //checkar se alguem biddou;
+
+            fs::path bids_directory = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+
+            if (fs::exists(bids_directory) && !(fs::is_empty(bids_directory))){
+                try {
+
+                    for (const auto& entry : fs::directory_iterator(bids_directory)) {
+                        if (fs::is_regular_file(entry.path())) { // Reply este if é preciso
+                            string bid_value_str;
+                            bid_filename = entry.path()
+
+                            fs::path curr_bid_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(bid_filename);
+                            
+                            ifstream bid_stream(curr_bid_file);
+
+                            string uid,bid_date;
+                            int bid_value, bid_date_secs;
+
+                            if (!(bid_stream.is_open())){
+                                STATUS("Couldn't open bid file.")
+                                bid_stream.close();
+                                return "BAD\n";
+                            }
+
+                            if (!(info_stream >> uid)){
+                                STATUS("Bid file doesn't have uid")
+                                return "BAD\n";
+                            }
+
+                            if (!is_valid_UID(uid)){
+                                STATUS("Bid file has a incorrectly formatted host_uid")
+                                return "BAD\n";
+                            }
+
+                            if (!(info_stream >> bid_value)){
+                                STATUS("Bid file doesn't have start value")
+                                return "BAD\n";
+                            }
+
+                            if (!is_valid_bid_value(bid_value)){
+                                STATUS("Bid file has a incorrectly formatted start value")
+                                return "BAD\n";
+                            }
+
+                            if (!(info_stream >> bid_date)){
+                                STATUS("Bid file doesn't have start date")
+                                return "BAD\n";
+                            }
+
+                            if (!is_valid_date_time(bid_date)){
+                                STATUS("Bid file has a incorrectly formatted date")
+                                return "BAD\n";
+                            }
+
+                            if (!(info_stream >> bid_date_secs)){
+                                STATUS("Bid file doesn't have a date in seconds")
+                                return "BAD\n";
+                            }
+
+                            reply += " B " + uid + " " + start_value + " " + start_date + " " + bid_date_secs;
+
+                    }
+                } catch (const filesystem::filesystem_error& e) {
+                    STATUS("Error accessing directory")
+                    return "BAD\n";
+                }
+
+
+            }
+            
+            //checkar se a auction ja acabou e se já escrever o [E ...]
+
+
+
+
+
+        }
+        else return "BAD\n"; //A auction existe mas nao tem start file
+    }
+    else{
+        reply += "NOK\n"
+    }
 
     return reply;
 }
@@ -549,14 +762,14 @@ int handle_UDP_req(string req){
 
     else if (request_type == "LOU"){
         reply = req_logout(reqstream);
-        if (reply == -1){
+        if (reply == ""){
             STATUS("Error during logout.")
         }
     }
 
     else if (request_type == "UNR"){
         reply = req_unregister(reqstream);
-        if (reply == -1){
+        if (reply == ""){
             STATUS("Error during unregister.")
         }
     }
@@ -570,7 +783,7 @@ int handle_UDP_req(string req){
 
     else if (request_type == "LMB"){
         reply = req_mybids(reqstream);
-        if (reply == -1){
+        if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
@@ -579,6 +792,13 @@ int handle_UDP_req(string req){
         reply = req_list();
         if (reply == ""){
             STATUS("Error during list")
+        }
+    }
+
+    else if (request_type == "SRC"){
+        reply = req_showrecord(reqstream);
+        if (reply == ""){
+            STATUS("Error during show record.")
         }
     }
 
