@@ -668,6 +668,7 @@ string req_showrecord(istringstream &reqstream){
                             reply += " B " + uid + " " + to_string(start_value) + " "
                                         + start_date + " " + to_string(bid_date_secs);
 
+                        }
                     }
                 } catch (const exception& e) {
                     STATUS("Error accessing directory");
@@ -679,9 +680,6 @@ string req_showrecord(istringstream &reqstream){
             }
             
             //checkar se a auction ja acabou e se já escrever o [E ...]
-
-
-
 
 
         }
