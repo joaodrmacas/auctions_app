@@ -680,7 +680,7 @@ string req_showrecord(istringstream &reqstream){
             }
             
             //checkar se a auction ja acabou e se já escrever o [E ...]
-
+            
 
         }
         else return "BAD\n"; //A auction existe mas nao tem start file
