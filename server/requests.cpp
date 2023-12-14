@@ -679,8 +679,34 @@ string req_showrecord(istringstream &reqstream){
             }
             
             //checkar se a auction ja acabou e se já escrever o [E ...]
+            fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+            if (fs::exists(end_auction_file)){
+                ifstream end_stream(end_auction_file);
 
+                if (!(end_stream.is_open())){
+                    STATUS("Couldn't open end auction file.")
+                    end_stream.close();
+                    return "BAD\n";
+                }
 
+                string end_datetime, end_sec_time;
+
+                if (!(end_stream >> end_datetime)){
+                    STATUS("End file doesn't have a date")
+                    return "BAD\n";
+                }
+
+                if (!is_valid_date_time(end_datetime)){
+                    STATUS("End file date is incorrectly formatted")
+                    return "BAD\n";
+                }
+
+                if (!(end_stream >> end_sec_time)){
+                    STATUS("End file doesn't have a end date in seconds")
+                    return "BAD\n";
+                }
+            }
+            else reply += "\n";
 
 
 
