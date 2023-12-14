@@ -9,7 +9,7 @@
 #define AUCTIONS_DIR_PATH ("AUCTIONS")
 #define HOSTED_DIR_PATH ("HOSTED")
 #define BIDDED_DIR_PATH ("BIDDED")
-#define BIDS_DIR_PATH("BIDS")
+#define BIDS_DIR_PATH ("BIDS")
 
 typedef struct __sys_var__ {
     string ASport=PORT;
