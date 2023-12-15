@@ -49,9 +49,9 @@ void get_args(int argc, char **argv) {
 
 int main(int argc, char** argv) {
 
-    string cmd;
 
     get_args(argc, argv);
+    string cmd;
 
     fs::path assets_dir = "assets";
     

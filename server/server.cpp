@@ -122,6 +122,7 @@ int start_tcp_socket(){
         return -1;
     }
 
+    return 0;
 }
 
 int end_tcp_socket(){
@@ -151,13 +152,16 @@ int main(int argc, char** argv){
         }
     }
 
-    if (fs::create_directory(users_dir)){
+
+    if (fs::create_directories(users_dir)){
         STATUS("Assets directory created successfully")
     }
     else {
         STATUS("Failed to create USERS directory.")
         exit(EXIT_FAILURE);
     }
+    
+    
 
     if(fs::exists(auctions_dir)){
         if (!fs::remove_all(auctions_dir)){

@@ -117,7 +117,6 @@ int cmd_login(istringstream &cmdstream) {
         MSG("You are already logged in.")
         return -1;
     }
-    STATUS("User isn't logged in.")
     
     if ( !(cmdstream >> UID) ){
         MSG("UID not specified.")

@@ -28,6 +28,10 @@ string req_login(istringstream &reqstream){
         return reply + "ERR\n";
     }
 
+    string test;
+    reqstream>>test;
+    STATUS_WA("test: %s", test.c_str())
+
     if (!reqstream.eof()){
         STATUS("Login request format is incorrect.")
         return reply + "ERR\n";
@@ -39,7 +43,18 @@ string req_login(istringstream &reqstream){
 
     //Registar user;
     //O registo é feito se não existir a diretoria ou se existir mas não tem password.
-    if(!(fs::exists(user_dir)) || !(fs::exists(pass_path))){
+    if(!(fs::exists(pass_path))){
+
+        if (!(fs::exists(user_dir))){
+            if (fs::create_directory(user_dir)){
+                STATUS("Assets directory created successfully")
+            }
+            else {
+                STATUS("Failed to create USERS directory.")
+                exit(EXIT_FAILURE);
+            }
+        }
+
         ofstream pass_stream(pass_path);
         ofstream login_stream(login_path);
 
@@ -141,6 +156,10 @@ string req_logout(istringstream &reqstream){
         return reply + "ERR\n";
     }
 
+    string test;
+    reqstream>>test;
+    STATUS_WA("test: %s", test.c_str())
+
     if (!reqstream.eof()){
         STATUS("Logout request format is incorrect.")
         return reply + "ERR\n";
@@ -155,7 +174,6 @@ string req_logout(istringstream &reqstream){
     //NOK se a diretoria existe, (se o login não existe || login existe e a password está errada)
     //UNR se a diretoria não existe || se a password não existe;
     if(fs::exists(user_dir)){
-
         //Reply
         //Não estamos a tratar do caso em pass não existe e login existe (o que fazer?)
 
@@ -369,7 +387,7 @@ string req_myauctions(istringstream &reqstream){
     //consideramos como se não tivesse logged in? Pq so o proprio user pode pedir este
     else reply += "NLG\n";
     
-    STATUS_WA("My auctions server reply: %s", reply)
+    STATUS_WA("My auctions server reply: %s", reply.c_str())
 
     return reply;
 }
@@ -436,7 +454,7 @@ string req_mybids(istringstream &reqstream){
     }
     else reply += "NLG\n";
 
-    STATUS_WA("My bids server reply: %s", reply)
+    STATUS_WA("My bids server reply: %s", reply.c_str())
 
     return reply;
 }
@@ -482,7 +500,7 @@ string req_list(){
             }
     }
 
-    STATUS_WA("My bids server reply: %s", reply)
+    STATUS_WA("My bids server reply: %s", reply.c_str())
 
     return reply;
 }
@@ -491,7 +509,7 @@ string req_list(){
 string req_showrecord(istringstream &reqstream){
     string AID;
 
-    string reply = "RSR ";
+    string reply = "RRC ";
     if (!(reqstream >> AID)){
         STATUS("My auctions request doesn't have UID")
         return reply + "ERR\n";
@@ -507,7 +525,6 @@ string req_showrecord(istringstream &reqstream){
         return reply + "ERR\n";
     }
 
-    string reply = "RRC ";
 
     fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
     fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
@@ -1318,16 +1335,16 @@ int handle_TCP_req() {
         }
     }
 
-    else if (request_type == "SAS"){
-        if (err_with_st) reply = "RSA ERR\n";
-        else {
-            reply = req_showasset(reqstream);
-            if (reply == ""){
-                STATUS("Error during show asset.")
-                return -1;
-            }
-        }
-    }
+    // else if (request_type == "SAS"){
+    //     if (err_with_st) reply = "RSA ERR\n";
+    //     else {
+    //         reply = req_showasset(reqstream);
+    //         if (reply == ""){
+    //             STATUS("Error during show asset.")
+    //             return -1;
+    //         }
+    //     }
+    // }
     
     else if (request_type == "BID"){
         if (err_with_st) reply = "RBD ERR\n";
