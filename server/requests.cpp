@@ -28,8 +28,11 @@ string req_login(istringstream &reqstream){
         return reply + "ERR\n";
     }
 
+    //FIXME
     string test;
+    printf("\"%s\"\n", reqstream.str().c_str());
     reqstream>>test;
+    printf("test_size: %ld\n", test.length());
     STATUS_WA("test: %s", test.c_str())
 
     if (!reqstream.eof()){
@@ -156,8 +159,12 @@ string req_logout(istringstream &reqstream){
         return reply + "ERR\n";
     }
 
+
+    //FIXME
     string test;
+    printf("%s\n", reqstream.str().c_str());
     reqstream>>test;
+    printf("test_size: %ld\n", test.length());
     STATUS_WA("test: %s", test.c_str())
 
     if (!reqstream.eof()){
