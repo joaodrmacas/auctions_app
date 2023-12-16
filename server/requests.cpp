@@ -1682,21 +1682,27 @@ int handle_TCP_req() {
     if (request_type == "OPA"){
         if (err_with_st) reply = "RLI ERR\n";
         else {
+            f_wrlock(sv.db_dir);
             reply = req_open(reqstream);
+            f_unlock(sv.db_dir);
         }
     }
 
     else if (request_type == "CLS"){
         if (err_with_st) reply = "RCL ERR\n";
         else {
+            f_wrlock(sv.db_dir);
             reply = req_close(reqstream);
+            f_unlock(sv.db_dir);
         }
     }
 
     else if (request_type == "SAS"){
         if (err_with_st) reply = "RSA ERR\n";
         else {
+            f_rdlock(sv.db_dir);
             req_showasset(reqstream);
+            f_unlock(sv.db_dir);
             return 0;
         }
     }
@@ -1704,7 +1710,9 @@ int handle_TCP_req() {
     else if (request_type == "BID"){
         if (err_with_st) reply = "RBD ERR\n";
         else {
+            f_wrlock(sv.db_dir);
             reply = req_bid(reqstream);
+            f_unlock(sv.db_dir);
         }
     }
     else reply = "ERR\n";
@@ -1742,56 +1750,70 @@ int handle_UDP_req(string req){
     }
 
     if (request_type == "LIN"){
+        f_wrlock(sv.db_dir);
         reply = req_login(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during login.")
         }
     }
 
     else if (request_type == "LOU"){
+        f_wrlock(sv.db_dir);
         reply = req_logout(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during logout.")
         }
     }
 
     else if (request_type == "UNR"){
+        f_wrlock(sv.db_dir);
         reply = req_unregister(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during unregister.")
         }
     }
 
     else if (request_type == "LMA"){
+        f_wrlock(sv.db_dir);
         reply = req_myauctions(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LMB"){
+        f_wrlock(sv.db_dir);
         reply = req_mybids(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LST"){
+        f_wrlock(sv.db_dir);
         reply = req_list();
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during list")
         }
     }
 
     else if (request_type == "SRC"){
+        f_wrlock(sv.db_dir);
         reply = req_showrecord(reqstream);
+        f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during show record.")
         }
     }
 
     else{
-        reply = reply + "ERR\n";
+        reply = "ERR\n";
         STATUS("Invalid request.")
     }
 
