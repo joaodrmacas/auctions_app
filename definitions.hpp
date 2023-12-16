@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <time.h>
+#include <sys/file.h>
 
 using namespace std;
 namespace fs = filesystem;
@@ -42,6 +43,8 @@ namespace fs = filesystem;
 #define DATE_TIME_LEN (19)
 #define END_TIME_LEN (5)
 #define MAX_AUCTIONS (1000)
+
+#define TIMEOUT_SECONDS (5)
 
 typedef struct bid {
     string UID, date_time;

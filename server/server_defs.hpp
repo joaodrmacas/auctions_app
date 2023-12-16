@@ -11,6 +11,9 @@
 #define BIDDED_DIR_PATH ("BIDDED")
 #define BIDS_DIR_PATH ("BIDS")
 #define ASSETS_DIR_PATH ("ASSETS")
+#define ASSET_DIR_PATH ("ASSET")
+
+#define MAX_AID 999
 
 typedef struct __sys_var__ {
     string ASport=PORT;

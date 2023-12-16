@@ -19,7 +19,7 @@ string req_showrecord(istringstream &reqstream);
 string req_open(istringstream &reqstream);
 string req_close(istringstream &reqstream);
 string req_bid(istringstream &reqstream);
-string req_showasset(istringstream &reqstream);
+void req_showasset(istringstream &reqstream);
 
 int handle_TCP_req();
 int handle_UDP_req(string req);

@@ -30,7 +30,7 @@
 #define ASSETS_DIR ("user/assets/")
 
 typedef struct __sys_var__ {
-    string ASIP=MY_IP, ASport=PORT;
+    string ASIP=PUBLIC_IP, ASport=PUBLIC_PORT;
     protocol UDP, TCP;
     string UID = NO_USER;
     string pass = NO_PASS;

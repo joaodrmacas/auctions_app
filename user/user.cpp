@@ -50,8 +50,8 @@ void get_args(int argc, char **argv) {
 int main(int argc, char** argv) {
 
 
-    get_args(argc, argv);
     string cmd;
+    get_args(argc, argv);
 
     fs::path assets_dir = "assets";
     

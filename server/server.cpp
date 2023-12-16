@@ -242,7 +242,9 @@ int main(int argc, char** argv){
             if (req_pid == 0){
                 LOG_WA(sv.verbose, "Received request: %s",sv.UDP.buffer)
                 string request(sv.UDP.buffer);
-                exit(handle_UDP_req(request));
+
+                int status = handle_UDP_req(request);
+                exit(status);
             }
 
         }

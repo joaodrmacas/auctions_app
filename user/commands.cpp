@@ -82,16 +82,28 @@ int end_tcp() {
     return 0;
 }
 
-string get_unique_fname(string fname) {
-    if (!ifstream(fname)) return fname;
 
+string get_unique_fname(string fname){
+    if (!ifstream(fname)) return fname;
+    string stem,extension;
     int n = 1;
     string fname_old = fname;
-    fname += " (" + to_string(n) + ")";
+    int f=0;
 
-    STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
+    size_t lastDotPos = fname.find_last_of('.');
+    if (lastDotPos != string::npos) {
+        stem = fname.substr(0, lastDotPos);
+        extension = fname.substr(lastDotPos);
+        fname = stem + "(" + to_string(n) + ")" + extension;
+    } else {
+        //no extension
+        f = 1;
+        fname += " (" + to_string(n) + ")";
+    }
 
-    while(ifstream(fname)) {
+    STATUS_WA("%s already exists. Trying %s", fname_old.c_str(),fname.c_str());
+
+    while(ifstream(fname)){
         int n_pos;
         for (n_pos = fname.length() - 1; n_pos >= 0; n_pos--) {
             if (fname[n_pos] == '(') {
@@ -101,22 +113,81 @@ string get_unique_fname(string fname) {
         }
 
         fname_old = fname;
-        fname = fname.substr(0, n_pos) + to_string(++n) + ")";
+        if (f==1){
+            fname = fname.substr(0, n_pos) + to_string(++n) + ")";
+        }
+        else {
+            fname = fname.substr(0, n_pos) + to_string(++n) + ")" + extension;
+        }
 
         STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
     }
-    
+
     return fname;
 }
 
+// string get_unique_fname(string fname) {
+//     if (!ifstream(fname)) return fname;
+
+//     int n = 1;
+//     string fname_old = fname;
+
+//     fname += " (" + to_string(n) + ")";
+
+//     STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
+
+//     while(ifstream(fname)) {
+//         int n_pos;
+//         for (n_pos = fname.length() - 1; n_pos >= 0; n_pos--) {
+//             if (fname[n_pos] == '(') {
+//                 n_pos++;
+//                 break;
+//             }
+//         }
+
+//         fname_old = fname;
+//         fname = fname.substr(0, n_pos) + to_string(++n) + ")";
+
+//         STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
+//     }
+    
+//     return fname;
+// }
+
+int read_timer(int fd) {
+    /* Set up the file descriptor set for select */
+    fd_set readSet;
+    FD_ZERO(&readSet);
+    FD_SET(fd, &readSet);
+
+    /* Set up the timeout */
+    struct timeval timeout;
+    timeout.tv_sec = TIMEOUT_SECONDS;
+    timeout.tv_usec = 0;
+    
+    /* Use select to wait for data or timeout */
+    int status = select(fd + 1, &readSet, NULL, NULL, &timeout);
+
+    if (status == -1) {
+        MSG("Something went wrong.")
+        STATUS("Error in select.")
+        return -1;
+    } else if (status == 0) {
+        MSG("Something went wrong.")
+        STATUS("Timeout occurred. No data received.")
+        return -1;
+    }
+
+    return 0;
+}
 
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
 
-    if (sv.UID != NO_USER){
-        MSG("You are already logged in.")
-        return -1;
-    }
+    // if (sv.UID != NO_USER){
+    //     MSG("You are already logged in.")
+    //     return -1;
+    // }
     
     if ( !(cmdstream >> UID) ){
         MSG("UID not specified.")
@@ -157,7 +228,10 @@ int cmd_login(istringstream &cmdstream) {
 
     //memset(sv.UDP.buffer,0,128);
 
+    if (read_timer(sv.UDP.fd) == -1) return -1;
+
     // sv.UDP.addrlen=sizeof(sv.UDP.addr);
+
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n <= 0) {
         MSG("Something went wrong.")
@@ -234,6 +308,9 @@ int cmd_logout() {
     STATUS_WA("Logout message sent: %s", sbuff.c_str())
 
     //memset(sv.UDP.buffer,0,128);
+
+
+    if (read_timer(sv.UDP.fd) == -1) return -1;
 
     // sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
@@ -314,6 +391,8 @@ int cmd_unregister() {
 
     //memset(sv.UDP.buffer,0,128);
     
+    if (read_timer(sv.UDP.fd) == -1) return -1;
+
     //sv.UDP.addrlen=sizeof(sv.UDP.addr);
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n <= 0) {
@@ -362,6 +441,7 @@ int cmd_unregister() {
             sv.UID = NO_USER;
             sv.pass = NO_PASS;
             MSG("Your user is no longer registered. You will be logged out.")
+            // MSG("Incorrect unregister attempt. You will be logged out.")
         } 
         else {
             MSG("Something went wrong.")
@@ -452,13 +532,15 @@ int cmd_open(istringstream &cmdstream) {
     ifstream fasset(asset_fname, ios::in | ios::ate);
 
     if (fasset.is_open()) {
-        int size = fasset.tellg();
+        size_t size = fasset.tellg();
 
         if (!is_valid_fsize(size)) {
             MSG_WA("Asset file is too big (> %d) bytes", FILE_MAX_SIZE)
             return -1;
         }
         
+        STATUS_WA("Asset file size: %ld", size)
+
         sbuff += to_string(size) + " ";
 
         fasset.seekg(0, ios::beg);
@@ -526,7 +608,13 @@ int cmd_open(istringstream &cmdstream) {
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
     size_t n, old_n = 0;
-    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+    while(1) {
+        if (read_timer(sv.UDP.fd) == -1) return -1;
+
+        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+
+        if (n == 0) break;
+
         if (n == -1) {
             MSG("Something went wrong.")
             STATUS("Could not receive show asset reply.")
@@ -652,7 +740,13 @@ int cmd_close(istringstream &cmdstream){
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
     size_t old_n = 0;
-    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+    while(1) {
+        if (read_timer(sv.UDP.fd) == -1) return -1;
+
+        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+
+        if (n == 0) break;
+
         if (n == -1) {
             MSG("Something went wrong.")
             STATUS("Could not receive show asset reply.")
@@ -733,6 +827,8 @@ int cmd_myauctions(){
         return -1;
     }
     STATUS_WA("Myauction message sent: %s", sbuff.c_str())
+
+    if (read_timer(sv.UDP.fd) == -1) return -1;
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
@@ -833,6 +929,8 @@ int cmd_mybids(){
     }
     STATUS_WA("Mybids message sent: %s", sbuff.c_str())
 
+    if (read_timer(sv.UDP.fd) == -1) return -1;
+
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
         MSG("Couldn't get your bids.")
@@ -916,10 +1014,10 @@ int cmd_mybids(){
 }
 
 int cmd_list(){
-    if (sv.UID == NO_USER){
-        MSG("You are not logged in.")
-        return -1;
-    }
+    // if (sv.UID == NO_USER){
+    //     MSG("You are not logged in.")
+    //     return -1;
+    // }
 
     string sbuff = "LST\n";
 
@@ -930,6 +1028,8 @@ int cmd_list(){
         return -1;
     }
     STATUS_WA("List message sent: %s", sbuff.c_str())
+
+    if (read_timer(sv.UDP.fd) == -1) return -1;
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n<=0) {
@@ -1015,10 +1115,10 @@ int cmd_list(){
 int cmd_show_asset(istringstream &cmdstream){
     string AID;
 
-    if (sv.UID == NO_USER) {
-        MSG("You are not logged in.")
-        return -1;
-    }
+    // if (sv.UID == NO_USER) {
+    //     MSG("You are not logged in.")
+    //     return -1;
+    // }
 
     if (!(cmdstream >> AID) ){
         MSG("AID not specified.")
@@ -1049,9 +1149,11 @@ int cmd_show_asset(istringstream &cmdstream){
     sbuff = "";
     // 40 Bytes is the total max lenght of the show_asset reply without the Fdata
     for (int total_n = 0; total_n < 40; total_n += n) {
+        if (read_timer(sv.UDP.fd) == -1) return -1;
+
         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
         
-        if (n < 0) {
+        if (n == -1) {
             MSG("Something went wrong.")
             STATUS("Could not receive show asset reply.")
             return -1;
@@ -1135,12 +1237,20 @@ int cmd_show_asset(istringstream &cmdstream){
                 return -1;
             }
 
-            int old_n=n;
-
             // initialize sv.TCP.buffer with just the Fdata
-            strcpy(sv.TCP.buffer, reply.str().substr(reply.tellg()).c_str());
+            string sreply = reply.str().substr(reply.tellg());
+            reply = istringstream(sreply); 
 
-            while((n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE)) != 0) {
+            strcpy(sv.TCP.buffer, sreply.c_str());
+
+            size_t old_n=sreply.length();
+
+            while(1) {
+                if (read_timer(sv.UDP.fd) == -1) return -1;
+
+                n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+
+                if (n == 0) break;
 
                 if (n == -1) {
                     MSG("Something went wrong.")
@@ -1148,21 +1258,22 @@ int cmd_show_asset(istringstream &cmdstream){
                     return -1;
                 }
 
-                if (!(outputFile << reply.rdbuf())){
-                    MSG("Something went wrong.")
+                if (!(outputFile << reply.str())){
                     STATUS("Error writing to file.")
+                    MSG("Something went wrong.")
+                    STATUS_WA("Failed content: %s", reply.str().c_str())
                     return -1;
                 }
 
                 sv.TCP.buffer[n] = '\0';
-                istringstream reply(sv.TCP.buffer);
+                reply = istringstream(sv.TCP.buffer);
 
                 old_n = n;
             }
 
             // Retirar o \n no final e colocar \0
-            if (sv.TCP.buffer[n-1] == '\n')
-                sv.TCP.buffer[n-1] = '\0';
+            if (sv.TCP.buffer[old_n-1] == '\n')
+                sv.TCP.buffer[old_n-1] = '\0';
             else {
                 MSG("Something went wrong.")
                 STATUS("No newline at the end of the message.")
@@ -1171,7 +1282,7 @@ int cmd_show_asset(istringstream &cmdstream){
 
             reply = istringstream(sv.TCP.buffer);
 
-            if (!(outputFile << reply.rdbuf())){
+            if (!(outputFile << reply.str())){
                 MSG("Something went wrong.")
                 STATUS("Error writing to file.")
                 return -1;
@@ -1255,7 +1366,13 @@ int cmd_bid(istringstream &cmdstream){
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
     size_t old_n = 0;
-    while((n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n))) {
+    while(1) {
+        if (read_timer(sv.UDP.fd) == -1) return -1;
+
+        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+
+        if (n == 0) break;
+
         if (n == -1) {
             MSG("Something went wrong.")
             STATUS("Could not receive show asset reply.")
@@ -1317,13 +1434,13 @@ int cmd_bid(istringstream &cmdstream){
     
 }
 
-int cmd_show_records(istringstream &cmdstream){
+int cmd_show_record(istringstream &cmdstream){
     string AID;
 
-    if (sv.UID == NO_USER) {
-        MSG("You are not logged in.")
-        return -1;
-    }
+    // if (sv.UID == NO_USER) {
+    //     MSG("You are not logged in.")
+    //     return -1;
+    // }
 
     if (!(cmdstream>>AID)){
         MSG("AID is not specified.")
@@ -1345,16 +1462,18 @@ int cmd_show_records(istringstream &cmdstream){
     if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, 
                 sv.UDP.res->ai_addrlen) == -1) {
         MSG("Something went wrong.")
-        STATUS("Could not send show records message")
+        STATUS("Could not send show_record message")
         return -1;
     }
-    STATUS_WA("Show_records message sent: %s", sbuff.c_str())
+    STATUS_WA("Show_record message sent: %s", sbuff.c_str())
+
+    if (read_timer(sv.UDP.fd) == -1) return -1;
 
     size_t n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr,&sv.UDP.addrlen);
     if(n <= 0) {
         MSG("Something went wrong.")
-        if (n == -1) STATUS("Could not receive show records reply.")
-        else STATUS("Show records reply is empty.")
+        if (n == -1) STATUS("Could not receive show record reply.")
+        else STATUS("Show record reply is empty.")
         return -1;
     }
 
@@ -1367,7 +1486,7 @@ int cmd_show_records(istringstream &cmdstream){
         return -1;
     }
 
-    STATUS_WA("Show records reply received: %s", sv.UDP.buffer);
+    STATUS_WA("Show_record reply received: %s", sv.UDP.buffer);
 
     istringstream reply(string(sv.UDP.buffer));
 
@@ -1752,7 +1871,7 @@ int processCommand(string full_cmd) {
     else if (cmd == "show_record" || cmd == "sr") {
         start_udp();
 
-        cmd_show_records(cmdstream);
+        cmd_show_record(cmdstream);
 
         end_udp();
     }
