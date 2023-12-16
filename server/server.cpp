@@ -158,6 +158,7 @@ void signalHandlerTCP( int signum ){
 
     if (signum == SIGINT || signum == SIGTERM){
         end_tcp_socket();
+        STATUS("Process ended safely")
     }
     else if (signum == SIGCHLD){
         int status;
@@ -237,6 +238,7 @@ int main(int argc, char** argv){
             exit(EXIT_FAILURE);
         }
 
+
         while(1){
             sv.TCP.addrlen = sizeof(sv.TCP.addr);
             newfd=accept(sv.TCP.fd,(struct sockaddr*) &sv.TCP.addr, &sv.TCP.addrlen);
@@ -248,6 +250,7 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
+                memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
 
                 sv.TCP.fd = newfd;
 
@@ -273,6 +276,7 @@ int main(int argc, char** argv){
         }
 
         while(1){
+            memset(sv.UDP.buffer,0,BUFFER_SIZE + 1);
             sv.UDP.addrlen = sizeof(sv.UDP.addr);
             n = recvfrom(sv.UDP.fd,sv.UDP.buffer,BUFFER_SIZE,0,(struct sockaddr*) &sv.UDP.addr, &sv.UDP.addrlen);
             if (n==-1){

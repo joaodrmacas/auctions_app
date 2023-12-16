@@ -1733,6 +1733,7 @@ int handle_UDP_req(string req){
 
     if (req[req.length() - 1] == '\n'){
         req = req.substr(0, req.length() - 1);
+        STATUS_WA("Request: \"%s\"", req.c_str())
     }
     else {
         STATUS("No newline at the end of the message.")

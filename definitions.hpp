@@ -68,10 +68,10 @@ typedef struct protocol {
     }
 
 #define LOG(active, msg)                                                     \
-    {if (active) {printf("[LOG]: %s  [Line %d] [File %s]\n", msg, __LINE__, __FILE__);}}
+    {if (active) {printf("[LOG]: %s", msg);}}
 
 #define LOG_WA(active, format, ...)                                          \
-    {if (active) {printf("[LOG]: " format "  [Line %d] [File %s]\n", __VA_ARGS__, __LINE__, __FILE__);}}
+    {if (active) {printf("[LOG]: " format " ", __VA_ARGS__);}}
 
 #define STATUS(msg)                                                     \
     {if (STATUS_ON) {printf("[STATUS]: %s  [Line %d] [File %s]\n", msg, __LINE__, __FILE__);}}
