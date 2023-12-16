@@ -440,8 +440,7 @@ int cmd_unregister() {
         else if (status == "UNR") {
             sv.UID = NO_USER;
             sv.pass = NO_PASS;
-            MSG("Your user is no longer registered. You will be logged out.")
-            // MSG("Incorrect unregister attempt. You will be logged out.")
+            MSG("Incorrect unregister attempt: your user is no longer registered. You will be logged out.")
         } 
         else {
             MSG("Something went wrong.")

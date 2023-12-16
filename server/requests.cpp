@@ -29,22 +29,86 @@ int read_timer(int fd) {
     return 0;
 }
 
+int f_rdlock(fs::path lock_path) {
+    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+
+    if (lock_fd == -1) {
+        STATUS("Error opening lock file.");
+        return -1;
+    }
+
+    if (flock(lock_fd, LOCK_SH) == -1) {
+        STATUS("Error locking file.");
+        return -1;
+    }
+
+    if (close(lock_fd) == -1) {
+        STATUS("Error closing lock file.");
+        return -1;
+    }
+
+    return 0;
+}
+
+int f_wrlock(fs::path lock_path) {
+    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+
+    if (lock_fd == -1) {
+        STATUS("Error opening lock file.");
+        return -1;
+    }
+
+    if (flock(lock_fd, LOCK_EX) == -1) {
+        STATUS("Error locking file.");
+        return -1;
+    }
+
+    if (close(lock_fd) == -1) {
+        STATUS("Error closing lock file.");
+        return -1;
+    }
+
+    return 0;
+}
+
+int f_unlock(fs::path lock_path) {
+    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+
+    if (lock_fd == -1) {
+        STATUS("Error opening lock file.");
+        return -1;
+    }
+
+    if (flock(lock_fd, LOCK_UN) == -1) {
+        STATUS("Error unlocking file.");
+        return -1;
+    }
+
+    if (close(lock_fd) == -1) {
+        STATUS("Error closing lock file.");
+        return -1;
+    }
+
+    return 0;
+
+}
 
 int update_auction(string AID) {
-    fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
+    fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+    fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
 
     if (!fs::exists(auction_dir)) {
         STATUS("Auction directory does not exist.")
         return -1;
     }
 
-    fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+    fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
     if (fs::exists(end_auction_file)) {
         STATUS("Auction has already ended.")
         return 0;
     }
 
-    fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+    fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
     if (!fs::exists(start_auction_file)) {
         STATUS("Start auction file does not exist.")
         return -1;
@@ -120,9 +184,9 @@ string req_login(istringstream &reqstream){
         return "RLI ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     //Registar user;
     //O registo e feito se nao existir a diretoria ou se existir mas nao tem password.
@@ -130,8 +194,8 @@ string req_login(istringstream &reqstream){
 
         if (!(fs::exists(user_dir))){
             
-            fs::path user_hosted_dir = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
-            fs::path user_bidded_dir = fs::path(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH);
+            fs::path user_hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
+            fs::path user_bidded_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH);
 
             if (!fs::create_directory(user_dir)){
                 STATUS("Failed to create user directory.")
@@ -244,9 +308,9 @@ string req_logout(istringstream &reqstream){
         STATUS("Logout request format is incorrect.")
         return "RLO ERR\n";
     }
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     //O logout é feito se a diretoria existe,se o login existe, e se a password está correta;
     //Reply no ok, se a password nao existir damos print do que??
@@ -327,9 +391,9 @@ string req_unregister(istringstream &reqstream){
         return "RUR ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     //OK - user_dir existe, login existe e pass está correta
     //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
@@ -408,9 +472,9 @@ string req_myauctions(istringstream &reqstream){
         return "RMA ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append((UID + "_login.txt"));
-    fs::path uid_hosted_dir = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append((UID + "_login.txt"));
+    fs::path uid_hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
 
     if (fs::exists(user_dir)){
         //Checkar login primeiro
@@ -433,9 +497,9 @@ string req_myauctions(istringstream &reqstream){
 
                         reply += " " + AID;
 
-
-                        fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-                        fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                        fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
+                        fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+                        fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
 
                         if (update_auction(AID) == -1) {
                             STATUS("Error updating auction.")
@@ -481,9 +545,10 @@ string req_mybids(istringstream &reqstream){
         return "RMB ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
-    fs::path uid_bidded_dir = fs::path(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH);
+    fs::path user_dir_lock = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID+".lock");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path uid_bidded_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH);
 
     if (fs::exists(user_dir)){
         //checkar login
@@ -506,8 +571,9 @@ string req_mybids(istringstream &reqstream){
 
                         reply += " " + AID;
 
-                        fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-                        fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                        fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
+                        fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+                        fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
                         
                         if (!(fs::exists(end_auction_file))){
                             reply += " 1";
@@ -530,7 +596,8 @@ string req_mybids(istringstream &reqstream){
 string req_list(){
     string reply = "RLS ";
 
-    fs::path auctions_dir = fs::path(AUCTIONS_DIR_PATH);
+
+    fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
 
     if (!fs::exists(auctions_dir)) {
         STATUS("AUCTIONS directory does not exist")
@@ -544,6 +611,7 @@ string req_list(){
                     if (fs::is_regular_file(entry.path())) { // Reply este if é preciso?
                         string AID;
                         AID = entry.path().stem().string();
+                        fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
 
                         if (!is_valid_AID(AID)){
                                 STATUS("Auction file name is not a valid AID.")
@@ -552,8 +620,8 @@ string req_list(){
 
                         reply += " " + AID;
 
-                        fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-                        fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                        fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+                        fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
                         
                         if (update_auction(AID) == -1) {
                             STATUS("Error updating auction.")
@@ -597,8 +665,8 @@ string req_showrecord(istringstream &reqstream){
     }
 
 
-    fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-    fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+    fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+    fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
 
     if (fs::exists(auction_dir)){
         if (fs::exists(start_auction_file)){
@@ -697,7 +765,7 @@ string req_showrecord(istringstream &reqstream){
             + " " + start_date + " " + to_string(timeactive);
 
             //checkar se alguem biddou;
-            fs::path bids_directory = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+            fs::path bids_directory = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
 
             if (fs::exists(bids_directory) && !(fs::is_empty(bids_directory))){
                 vector<string> file_names;
@@ -720,7 +788,7 @@ string req_showrecord(istringstream &reqstream){
 
                         if (fs::is_regular_file(file_names[i])) {
 
-                            fs::path curr_bid_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
+                            fs::path curr_bid_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
                             
                             ifstream bid_stream(curr_bid_file);
 
@@ -788,7 +856,7 @@ string req_showrecord(istringstream &reqstream){
             }
             
             //checkar se a auction ja acabou e se ja escrever o [E ...]
-            fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+            fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
             if (fs::exists(end_auction_file)){
                 ifstream end_stream(end_auction_file);
 
@@ -830,12 +898,9 @@ string req_showrecord(istringstream &reqstream){
 }
 
 
-
 // TCP
 int req_open_rollback(string UID, string AID) {
-    fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-    fs::path auction_file_path = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID + ".txt");
-
+    fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
 
     if (fs::exists(auction_dir)) {
         try {
@@ -845,6 +910,8 @@ int req_open_rollback(string UID, string AID) {
             return -1;
         }
     }
+
+    sv.next_AID--;
 
     return 0;
 }
@@ -928,9 +995,9 @@ string req_open(istringstream &reqstream){
         return "ROA ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     //OK - user_dir existe, login existe e pass está correta
     //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
@@ -956,11 +1023,11 @@ string req_open(istringstream &reqstream){
         if (req_pass == password) {
             // get AID from sv.next_AID
             char cAID[4];
-            sprintf(cAID, "%03d", sv.next_AID);
+            sprintf(cAID, "%03d", sv.next_AID++);
             string AID = string(cAID);
 
-            fs::path hosted_dir = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
-            fs::path auction_file_path = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+            fs::path hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
+            fs::path auction_file_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
 
             if (!fs::exists(hosted_dir)){
                 STATUS("Hosted directory does not exist.")
@@ -975,11 +1042,11 @@ string req_open(istringstream &reqstream){
             }
 
             // cria os paths para a auction
-            fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-            fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
-            fs::path bids_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
-            fs::path assets_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
-            fs::path asset_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
+            fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+            fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+            fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+            fs::path assets_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
+            fs::path asset_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
 
             // cria as diretorias a partir dos paths
             if (!fs::create_directory(auction_dir)) {
@@ -1078,9 +1145,6 @@ string req_open(istringstream &reqstream){
                     STATUS("Error writing to file.")
                     return "BAD\n";
                 }
-
-            sv.next_AID++;
-
             return "ROA OK\n";
         }
         else return "ROA NOK\n";  //Login existe mas pass errada
@@ -1128,9 +1192,9 @@ string req_close(istringstream &reqstream){
         return "RCL ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     
     if(fs::exists(user_dir)){
@@ -1159,9 +1223,9 @@ string req_close(istringstream &reqstream){
             
             if (req_pass == password){
                 
-                fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-                fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
-                fs::path user_auction_hosted_file = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+                fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+                fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                fs::path user_auction_hosted_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
 
                 //checkar se o auction existe
                 if (!fs::exists(curr_auction_dir)){
@@ -1238,8 +1302,8 @@ void req_showasset(istringstream &reqstream){
             break;
         }
 
-        fs::path auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-        fs::path auction_asset_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH);
+        fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+        fs::path auction_asset_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH);
         
         if(fs::exists(auction_dir) && (fs::exists(auction_asset_dir)) && (!fs::is_empty(auction_dir))){
             int fileCount = 0;
@@ -1268,7 +1332,7 @@ void req_showasset(istringstream &reqstream){
             uintmax_t fileSize;
             fs::path filePath;
             try {
-                filePath = fs::path(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH).append(filename);
+                filePath = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH).append(filename);
                 fileSize = fs::file_size(filePath);
             } catch (const exception& e) {
                 STATUS("Error getting the size of the file")
@@ -1411,9 +1475,9 @@ string req_bid(istringstream &reqstream){
         return "RBD ERR\n";
     }
 
-    fs::path user_dir = fs::path(USERS_DIR_PATH).append(UID);
-    fs::path pass_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-    fs::path login_path = fs::path(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+    fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+    fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+    fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
     
     if(fs::exists(user_dir)){
@@ -1442,9 +1506,9 @@ string req_bid(istringstream &reqstream){
             
             if (req_pass == password){
                 
-                fs::path curr_auction_dir = fs::path(AUCTIONS_DIR_PATH).append(AID);
-                fs::path end_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
-                fs::path user_auction_hosted_file = fs::path(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+                fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+                fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
+                fs::path user_auction_hosted_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
 
                 
                 if (!fs::exists(curr_auction_dir)){
@@ -1455,7 +1519,7 @@ string req_bid(istringstream &reqstream){
                         //checkar se a auction esta terminada
                         if (!fs::exists(end_auction_file)){
 
-                            fs::path bids_dir = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+                            fs::path bids_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
 
                             vector<string> file_names;
                             try {
@@ -1489,7 +1553,7 @@ string req_bid(istringstream &reqstream){
 
                                 char fname[7];
                                 sprintf(fname, "%06d", value);
-                                fs::path user_bidded_file = fs::path(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
+                                fs::path user_bidded_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
 
                                 ofstream bid_stream(user_bidded_file);
                                 
@@ -1501,7 +1565,7 @@ string req_bid(istringstream &reqstream){
 
                                 bid_stream.close();
 
-                                fs::path start_auction_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+                                fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
                                 ifstream start_stream(start_auction_file);
 
                                 if (!start_stream.is_open()){
@@ -1524,7 +1588,7 @@ string req_bid(istringstream &reqstream){
                                     return "BAD\n";
                                 }
 
-                                fs::path auctions_bidded_file = fs::path(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(string(fname) + ".txt");
+                                fs::path auctions_bidded_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(string(fname) + ".txt");
                                 
         
                                 bid_stream = ofstream(auctions_bidded_file);
@@ -1585,9 +1649,10 @@ int handle_TCP_req() {
 
         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
         
-        if (n < 0) {
+        if (n == -1) {
             STATUS("Could not receive tcp reply.")
-            return -1;
+            if (total_n >= 3) err_with_st = true;
+            break;
         }
         if (n == 0) {
             STATUS("No more bytes in tcp message.")

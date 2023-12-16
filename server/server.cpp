@@ -89,7 +89,6 @@ int end_udp_socket() {
 
     freeaddrinfo(sv.UDP.res);
     return 0;
-
 }
 
 int start_tcp_socket(){
@@ -136,47 +135,86 @@ int end_tcp_socket(){
     return 0;
 }
 
+void signalHandlerUDP( int signum ) {
+
+    if (signum == SIGINT || signum == SIGTERM){
+        end_udp_socket();
+    }
+    else if (signum == SIGCHLD){
+        int status;
+        pid_t terminated_pid = wait(&status);
+        STATUS_WA("Subprocess %d terminated with status: %d",terminated_pid,status)
+        return;
+    }
+
+   exit(signum);  
+}
+
+void ignoreSignal( int signum ){
+    STATUS_WA("Signal %d was ignored", signum)
+} 
+
+void signalHandlerTCP( int signum ){
+
+    if (signum == SIGINT || signum == SIGTERM){
+        end_tcp_socket();
+    }
+    else if (signum == SIGCHLD){
+        int status;
+        pid_t terminated_pid = wait(&status);
+        STATUS_WA("Subprocess %d terminated with status: %d",terminated_pid,status)
+        return;
+    }
+
+   exit(signum); 
+}
+
 int main(int argc, char** argv){
     size_t n;
 
     get_args(argc,argv);
 
-    fs::path users_dir = USERS_DIR_PATH;
-    fs::path auctions_dir = AUCTIONS_DIR_PATH;
+    fs::path db_dir = fs::path(DB_DIR_PATH);
+    fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
+    fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
 
-    
-    if(fs::exists(users_dir)){
-        if (!fs::remove_all(users_dir)){
-            STATUS("Failed to delete assets directory.")
+
+    if(fs::exists(db_dir)){
+        if (!fs::remove_all(db_dir)){
+            STATUS("Failed to delete DB directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-
-    if (fs::create_directories(users_dir)){
-        STATUS("Assets directory created successfully")
+    if (!fs::create_directory(db_dir)){
+        STATUS("Failed to create DB directory.")
+        exit(EXIT_FAILURE);
     }
-    else {
+
+    if(fs::exists(users_dir)){
+        if (!fs::remove_all(users_dir)){
+            STATUS("Failed to delete USERS directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (!fs::create_directory(users_dir)){
         STATUS("Failed to create USERS directory.")
         exit(EXIT_FAILURE);
     }
     
-    
-
     if(fs::exists(auctions_dir)){
         if (!fs::remove_all(auctions_dir)){
-            STATUS("Failed to delete assets directory.")
+            STATUS("Failed to delete AUCTIONS directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-    if (fs::create_directory(auctions_dir)){
-        STATUS("Assets directory created successfully")
-    }
-    else {
+    if (!fs::create_directory(auctions_dir)){
         STATUS("Failed to create AUCTIONS directory.")
         exit(EXIT_FAILURE);
     }
+
 
     memset(sv.UDP.buffer,0,BUFFER_SIZE + 1);
     memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
@@ -190,6 +228,9 @@ int main(int argc, char** argv){
 
     //TCP
     if (pid>0){
+        signal(SIGINT, signalHandlerTCP);
+        signal(SIGTERM, signalHandlerTCP);
+        signal(SIGCHLD, signalHandlerTCP);
         int newfd=0;
 
         if (start_tcp_socket() == -1){
@@ -223,7 +264,9 @@ int main(int argc, char** argv){
 
     //UDP
     else if (pid == 0){
-
+        signal(SIGINT, signalHandlerUDP);
+        signal(SIGTERM, signalHandlerUDP);
+        signal(SIGCHLD, signalHandlerUDP);
         
         if (start_udp_socket()==-1){
             exit(EXIT_FAILURE);
@@ -240,6 +283,11 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
+                signal(SIGINT, ignoreSignal);
+                signal(SIGTERM, ignoreSignal);
+                signal(SIGCHLD, ignoreSignal);
+
+                
                 LOG_WA(sv.verbose, "Received request: %s",sv.UDP.buffer)
                 string request(sv.UDP.buffer);
 

@@ -20,6 +20,8 @@
 #include <filesystem>
 #include <time.h>
 #include <sys/file.h>
+#include <csignal>
+#include <sys/wait.h>
 
 using namespace std;
 namespace fs = filesystem;
