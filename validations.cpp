@@ -233,18 +233,3 @@ bool is_valid_bid_value(int value){
     return true;
 }
 
-bool is_valid_bid_time(string time) {
-    if (time.length() != END_TIME_LEN) {
-        STATUS("Bid_time is not 5 characters long.")
-        return false;
-    }
-
-    for (char c : time) {
-        if (!isdigit(c)) {
-            STATUS("Bid_time should be numeric.")
-            return false;
-        }
-    }
-
-    return true;
-}

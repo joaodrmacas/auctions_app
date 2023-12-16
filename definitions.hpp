@@ -46,7 +46,7 @@ namespace fs = filesystem;
 #define END_TIME_LEN (5)
 #define MAX_AUCTIONS (1000)
 
-#define TIMEOUT_SECONDS (5)
+#define TIMEOUT_SECONDS (10)
 
 typedef struct bid {
     string UID, date_time;
