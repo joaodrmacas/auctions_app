@@ -1111,13 +1111,217 @@ int cmd_list(){
 
 }
 
+// int cmd_show_asset(istringstream &cmdstream){
+//     string AID;
+
+//     // if (sv.UID == NO_USER) {
+//     //     MSG("You are not logged in.")
+//     //     return -1;
+//     // }
+
+//     if (!(cmdstream >> AID) ){
+//         MSG("AID not specified.")
+//         return -1;
+//     }
+
+//     if (!(is_valid_AID(AID))){
+//         MSG("AID is not correctly formatted.")
+//         return -1;
+//     }
+
+//     if (!cmdstream.eof()) {
+//         MSG("Too many arguments.")
+//         return -1;
+//     }
+
+//     string sbuff = "SAS " +  AID + "\n";
+//     size_t n = write(sv.TCP.fd, sbuff.c_str(), sbuff.length());
+
+//     if (n != sbuff.length()) {
+//         MSG("Something went wrong.")
+//         STATUS("Could not send show asset request.")
+//         return -1;
+//     }
+//     STATUS_WA("Show_asset message sent: %s", sbuff.c_str())
+
+
+//     int removedN = 0;
+//     // Reply
+//     sbuff = "";
+//     // 40 Bytes is the total max lenght of the show_asset reply without the Fdata
+//     for (int total_n = 0; total_n < 40; total_n += n) {
+//         if (read_timer(sv.UDP.fd) == -1) return -1;
+
+//         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+        
+//         if (n == -1) {
+//             MSG("Something went wrong.")
+//             STATUS("Could not receive show asset reply.")
+//             return -1;
+//         }
+//         if (n == 0) {
+//             STATUS("No more bytes in show_asset reply.")
+
+//             // Retirar o \n no final e colocar \0
+//             if (sbuff[total_n - 1] == '\n'){
+//                 removedN = 1;
+//                 sbuff[total_n - 1] = '\0';
+//             }
+//             else {
+//                 MSG("Something went wrong.")
+//                 STATUS("No newline at the end of the message.")
+//                 return -1;
+//             }
+
+//             break;
+//         }
+//         sv.TCP.buffer[BUFFER_SIZE+1] = '\0';
+//         sbuff += string(sv.TCP.buffer);
+//     }
+    
+//     STATUS_WA("Show asset reply received (if too big, 1st %d bytes): %s", 90,
+//                     sbuff.substr(0, min(90, static_cast<int>(sbuff.length()))).c_str())
+
+//     istringstream reply(sbuff);
+
+//     string opcode;
+//     if (!(reply >> opcode)){
+//         MSG("Something went wrong.")
+//         STATUS("Can't comprehend server's reply: no opcode.")
+//         return -1;
+//     }
+
+//     if (opcode == "RSA"){
+//         string status;
+
+//         if (!(reply >> status)) {
+//             MSG("Something went wrong.")
+//             STATUS("Can't comprehend server's reply: no status.")
+//             return -1;
+//         }
+
+//         if (status=="OK"){
+//             string fname,fdata;
+//             int fsize;
+
+//             if (!(reply >> fname)){
+//                 MSG("Something went wrong.")
+//                 STATUS("Can't comprehend server's reply: no fname.")
+//                 return -1;
+//             }
+
+//             if (!is_valid_fname(fname)){
+//                 MSG("Something went wrong.")
+//                 STATUS("Not valid fname.")
+//                 return -1;
+//             }
+
+//             if (!(reply >> fsize)){
+//                 MSG("Something went wrong.")
+//                 STATUS("Can't comprehend server's reply: no fsize or fsize is not an int")
+//                 return -1;
+//             }
+
+//             if (!(is_valid_fsize(fsize))){
+//                 MSG("Something went wrong.")
+//                 STATUS("Not valid fsize.")
+//                 return -1;
+//             }
+
+//             fname = get_unique_fname(ASSETS_DIR + fname);
+
+//             ofstream outputFile(fname);
+
+//             if (!outputFile.is_open()) {
+//                 MSG("Something went wrong.")
+//                 STATUS_WA("Error opening the file: %s.", fname.c_str())
+//                 return -1;
+//             }
+
+//             // initialize sv.TCP.buffer with just the Fdata
+//             string sreply = reply.str().substr(reply.tellg());
+//             sreply = sreply.substr(1);
+//             reply = istringstream(sreply); 
+
+//             memset(sv.TCP.buffer,0,BUFFER_SIZE);
+//             strcpy(sv.TCP.buffer, sreply.c_str());
+
+//             size_t old_n=sreply.length();
+
+//             while(1) {
+//                 if (read_timer(sv.UDP.fd) == -1) return -1;
+
+//                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+
+//                 if (n == 0) break;
+
+//                 if (n == -1) {
+//                     MSG("Something went wrong.")
+//                     STATUS("Could not receive show asset reply.")
+//                     return -1;
+//                 }
+
+//                 if (!(outputFile << reply.str())){
+//                     STATUS("Error writing to file.")
+//                     MSG("Something went wrong.")
+//                     STATUS_WA("Failed content: %s", reply.str().c_str())
+//                     return -1;
+//                 }
+
+//                 sv.TCP.buffer[n] = '\0';
+//                 reply = istringstream(sv.TCP.buffer);
+
+//                 old_n = n;
+//             }
+
+//             if (!removedN){
+//                 if (sv.TCP.buffer[old_n-1] == '\n') 
+//                     sv.TCP.buffer[old_n-1] = '\0';
+//                 else {
+//                     MSG("Something went wrong.")
+//                     STATUS("No newline at the end of the message.")
+//                     return -1;
+//                 }
+//             }
+//             else STATUS("Already removed \\n")
+
+//             reply = istringstream(sv.TCP.buffer);
+
+//             if (!(outputFile << reply.str())){
+//                 MSG("Something went wrong.")
+//                 STATUS("Error writing to file.")
+//                 return -1;
+//             }
+            
+//             string short_fname;
+//             for (int i = fname.length() - 1; i >= 0; i--) {
+//                 if (fname[i] == '/') {
+//                     short_fname = fname.substr(i + 1);
+//                     break;
+//                 }
+//             }
+
+//             MSG_WA("Asset file was successfully saved as \"%s\" in the \"%s\" directory.", short_fname.c_str(), ASSETS_DIR)
+//         }
+//         else if (status=="NOK") MSG("There is no file or some other problem.")
+//         else {
+//             MSG("Something went wrong.")
+//             STATUS("Can't comprehend server's reply.")
+//             return -1;
+//         }
+//     }
+//     else {
+//         MSG("Something went wrong.")
+//         if (opcode == "ERR") STATUS("Wrong syntax or parameters with invalid values.")
+//         else STATUS("Can't comprehend server's reply.")
+//         return -1;
+//     }
+    
+//     return 0;
+// }
+
 int cmd_show_asset(istringstream &cmdstream){
     string AID;
-
-    // if (sv.UID == NO_USER) {
-    //     MSG("You are not logged in.")
-    //     return -1;
-    // }
 
     if (!(cmdstream >> AID) ){
         MSG("AID not specified.")
@@ -1144,54 +1348,38 @@ int cmd_show_asset(istringstream &cmdstream){
     }
     STATUS_WA("Show_asset message sent: %s", sbuff.c_str())
 
-    int removedN = 0;
-    // Reply
-    sbuff = "";
-    // 40 Bytes is the total max lenght of the show_asset reply without the Fdata
-    for (int total_n = 0; total_n < 40; total_n += n) {
-        if (read_timer(sv.UDP.fd) == -1) return -1;
-
-        n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-        
-        if (n == -1) {
-            MSG("Something went wrong.")
-            STATUS("Could not receive show asset reply.")
-            return -1;
-        }
-        if (n == 0) {
-            STATUS("No more bytes in show_asset reply.")
-
-            // Retirar o \n no final e colocar \0
-            if (sbuff[total_n - 1] == '\n'){
-                removedN = 1;
-                sbuff[total_n - 1] = '\0';
-            }
-            else {
-                MSG("Something went wrong.")
-                STATUS("No newline at the end of the message.")
-                return -1;
-            }
-
-            break;
-        }
-        sv.TCP.buffer[n] = '\0';
-        sbuff += string(sv.TCP.buffer);
+    memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
+    //le a primeira vez
+    if (read_timer(sv.TCP.fd)==-1) return -1;
+    n = read(sv.TCP.fd,sv.TCP.buffer,BUFFER_SIZE);
+    //erro a ler
+    if (n == -1) {
+        MSG("Something went wrong.")
+        STATUS("Could not receive show asset reply.")
+        return -1;
     }
-    
-    STATUS_WA("Show asset reply received (if too big, 1st %d bytes): %s", 90,
-                    sbuff.substr(0, min(90, static_cast<int>(sbuff.length()))).c_str())
+    //nao ha resposta
+    if (n == 0) {
+        MSG("Something went wrong.")
+        STATUS("Empty reply.")
+        return -1;
+    }
 
-    istringstream reply(sbuff);
+    string buff = string(sv.TCP.buffer);
+    istringstream reply(buff);
+    int bytesToRemove=0;
 
+    //analisar a primeira parte do pedido
     string opcode;
     if (!(reply >> opcode)){
         MSG("Something went wrong.")
         STATUS("Can't comprehend server's reply: no opcode.")
         return -1;
     }
-
     if (opcode == "RSA"){
         string status;
+
+        bytesToRemove+=4;
 
         if (!(reply >> status)) {
             MSG("Something went wrong.")
@@ -1199,9 +1387,12 @@ int cmd_show_asset(istringstream &cmdstream){
             return -1;
         }
 
+        //continuar a ler a reply
         if (status=="OK"){
-            string fname,fdata;
+            string fname, fdata;
             int fsize;
+
+            bytesToRemove+=3;
 
             if (!(reply >> fname)){
                 MSG("Something went wrong.")
@@ -1215,6 +1406,8 @@ int cmd_show_asset(istringstream &cmdstream){
                 return -1;
             }
 
+            bytesToRemove+= fname.length()+1;
+
             if (!(reply >> fsize)){
                 MSG("Something went wrong.")
                 STATUS("Can't comprehend server's reply: no fsize or fsize is not an int")
@@ -1227,71 +1420,94 @@ int cmd_show_asset(istringstream &cmdstream){
                 return -1;
             }
 
+            bytesToRemove += to_string(fsize).length()+1;
+            int bytes_written = 0;
+
             fname = get_unique_fname(ASSETS_DIR + fname);
 
-            ofstream outputFile(fname);
+            char tempBuf[BUFFER_SIZE+1];
+            memset(tempBuf,0,BUFFER_SIZE+1);
+            memcpy(tempBuf,sv.TCP.buffer+bytesToRemove,BUFFER_SIZE+1-bytesToRemove);
+            tempBuf[n-bytesToRemove] = '\0';
 
-            if (!outputFile.is_open()) {
+            FILE *file = fopen(fname.c_str(), "w");
+            if (file == NULL) {
                 MSG("Something went wrong.")
-                STATUS_WA("Error opening the file: %s.", fname.c_str())
-                return -1;
+                STATUS("Could not open asset file.")
+                return -1; // Return an error code
             }
 
-            // initialize sv.TCP.buffer with just the Fdata
-            string sreply = reply.str().substr(reply.tellg());
-            sreply = sreply.substr(1);
-            reply = istringstream(sreply); 
+            size_t old_n = n-bytesToRemove;
+            while (1){
+                memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
 
-            memset(sv.TCP.buffer,0,BUFFER_SIZE);
-            strcpy(sv.TCP.buffer, sreply.c_str());
+                if (read_timer(sv.TCP.fd)==-1) return -1;
 
-            size_t old_n=sreply.length();
-
-            while(1) {
-                if (read_timer(sv.UDP.fd) == -1) return -1;
-
-                n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-
-                if (n == 0) break;
-
-                if (n == -1) {
+                n = read(sv.TCP.fd,sv.TCP.buffer,BUFFER_SIZE);
+                if (n==0) break;
+                if(n==-1){
                     MSG("Something went wrong.")
                     STATUS("Could not receive show asset reply.")
+                    fclose(file);
                     return -1;
                 }
 
-                if (!(outputFile << reply.str())){
-                    STATUS("Error writing to file.")
+
+                size_t elements_written = fwrite(tempBuf,1,old_n,file);
+                bytes_written += elements_written;
+
+                // Check if the write operation was successful
+                if (elements_written != old_n) {
                     MSG("Something went wrong.")
-                    STATUS_WA("Failed content: %s", reply.str().c_str())
-                    return -1;
+                    STATUS("Failed to write all bytes to asset file.")
+                    fclose(file);
+                    return -1; // Return an error code
                 }
 
-                sv.TCP.buffer[n] = '\0';
-                reply = istringstream(sv.TCP.buffer);
-
+                memset(tempBuf,0,BUFFER_SIZE+1);
+                memcpy(tempBuf,sv.TCP.buffer,BUFFER_SIZE+1);
                 old_n = n;
             }
 
-            if (!removedN){
-                if (sv.TCP.buffer[old_n-1] == '\n') 
-                    sv.TCP.buffer[old_n-1] = '\0';
-                else {
-                    MSG("Something went wrong.")
-                    STATUS("No newline at the end of the message.")
-                    return -1;
-                }
+            //write da ultima porçao do pedido
+
+
+            if (tempBuf[old_n-1]=='\n'){
+                tempBuf[old_n-1] = '\0';
             }
-            else STATUS("Already removed \\n")
-
-            reply = istringstream(sv.TCP.buffer);
-
-            if (!(outputFile << reply.str())){
+            else {
                 MSG("Something went wrong.")
-                STATUS("Error writing to file.")
+                STATUS("No newline at the end of the message.")
+                fclose(file);
                 return -1;
             }
-            
+
+            size_t elements_written = fwrite(tempBuf,1,old_n-1,file);
+            bytes_written += elements_written;
+
+            STATUS_WA("Bytes_written: %d\t\tfsize: %d", bytes_written,fsize);
+
+
+            // Check if the write operation was successful
+            if (elements_written != old_n-1) {
+                MSG("Something went wrong.")
+                STATUS("Failed to write all bytes to asset file.")
+                fclose(file);
+                return -1; // Return an error code
+            }
+
+            fclose(file);
+
+
+
+            STATUS_WA("There were written %d bytes to asset file", bytes_written);
+
+            if (bytes_written!=fsize){
+                MSG("Something went wrong.")
+                STATUS("Bytes written to asset file != fsize")
+                return -1;
+            }
+
             string short_fname;
             for (int i = fname.length() - 1; i >= 0; i--) {
                 if (fname[i] == '/') {
@@ -1302,7 +1518,7 @@ int cmd_show_asset(istringstream &cmdstream){
 
             MSG_WA("Asset file was successfully saved as \"%s\" in the \"%s\" directory.", short_fname.c_str(), ASSETS_DIR)
         }
-        else if (status=="NOK") MSG("There is no file or some other problem.")
+        else if (status == "NOK") MSG("There is no file or some other problems.")
         else {
             MSG("Something went wrong.")
             STATUS("Can't comprehend server's reply.")
