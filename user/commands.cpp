@@ -1144,6 +1144,7 @@ int cmd_show_asset(istringstream &cmdstream){
     }
     STATUS_WA("Show_asset message sent: %s", sbuff.c_str())
 
+    int removedN = 0;
     // Reply
     sbuff = "";
     // 40 Bytes is the total max lenght of the show_asset reply without the Fdata
@@ -1161,8 +1162,10 @@ int cmd_show_asset(istringstream &cmdstream){
             STATUS("No more bytes in show_asset reply.")
 
             // Retirar o \n no final e colocar \0
-            if (sbuff[total_n - 1] == '\n')
+            if (sbuff[total_n - 1] == '\n'){
+                removedN = 1;
                 sbuff[total_n - 1] = '\0';
+            }
             else {
                 MSG("Something went wrong.")
                 STATUS("No newline at the end of the message.")
@@ -1171,10 +1174,8 @@ int cmd_show_asset(istringstream &cmdstream){
 
             break;
         }
-
         sv.TCP.buffer[n] = '\0';
         sbuff += string(sv.TCP.buffer);
-
     }
     
     STATUS_WA("Show asset reply received (if too big, 1st %d bytes): %s", 90,
@@ -1238,8 +1239,10 @@ int cmd_show_asset(istringstream &cmdstream){
 
             // initialize sv.TCP.buffer with just the Fdata
             string sreply = reply.str().substr(reply.tellg());
+            sreply = sreply.substr(1);
             reply = istringstream(sreply); 
 
+            memset(sv.TCP.buffer,0,BUFFER_SIZE);
             strcpy(sv.TCP.buffer, sreply.c_str());
 
             size_t old_n=sreply.length();
@@ -1270,14 +1273,16 @@ int cmd_show_asset(istringstream &cmdstream){
                 old_n = n;
             }
 
-            // Retirar o \n no final e colocar \0
-            if (sv.TCP.buffer[old_n-1] == '\n')
-                sv.TCP.buffer[old_n-1] = '\0';
-            else {
-                MSG("Something went wrong.")
-                STATUS("No newline at the end of the message.")
-                return -1;
+            if (!removedN){
+                if (sv.TCP.buffer[old_n-1] == '\n') 
+                    sv.TCP.buffer[old_n-1] = '\0';
+                else {
+                    MSG("Something went wrong.")
+                    STATUS("No newline at the end of the message.")
+                    return -1;
+                }
             }
+            else STATUS("Already removed \\n")
 
             reply = istringstream(sv.TCP.buffer);
 
