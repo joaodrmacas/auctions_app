@@ -25,8 +25,7 @@
 
 using namespace std;
 
-#define DEBUG (1)
-#define STATUS_ON (1)
+#define STATUS_ON (0)
 
 #define PORT ("58036")
 
