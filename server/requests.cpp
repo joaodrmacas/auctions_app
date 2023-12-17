@@ -655,14 +655,16 @@ string req_list(){
 string req_showrecord(istringstream &reqstream){
     string AID;
 
+    STATUS("OLA AGAIN")
+
     string reply = "RRC ";
     if (!(reqstream >> AID)){
-        STATUS("My auctions request doesn't have UID")
+        STATUS("My auctions request doesn't have AID")
         return "RRC ERR\n";
     }
 
     if (!is_valid_AID(AID)){
-        STATUS("AID is not correctly formatted.")
+        STATUS_WA("AID is not correctly formatted: %s", AID.c_str())
         return "RRC ERR\n";
     }
 
@@ -675,8 +677,10 @@ string req_showrecord(istringstream &reqstream){
     fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
     fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
 
+    STATUS("OLA AGAIN")
     if (fs::exists(auction_dir)){
         if (fs::exists(start_auction_file)){
+            STATUS("OLA AGAIN")
 
             if (update_auction(AID) == -1) {
                 STATUS("Error updating auction.")
@@ -786,13 +790,11 @@ string req_showrecord(istringstream &reqstream){
 
             if (fs::exists(bids_directory) && !(fs::is_empty(bids_directory))){
                 vector<string> file_names;
-
+                STATUS("OLA AGAIN")
                 try {
 
                     for (const auto& entry : fs::directory_iterator(bids_directory)) {
-                        if (fs::is_regular_file(entry.path())) {
-                            file_names.push_back(entry.path().filename().string());
-                        }
+                        file_names.push_back(entry.path().filename().string());
                     }
 
                     std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
@@ -804,75 +806,79 @@ string req_showrecord(istringstream &reqstream){
                     for (int i=0; i<len; i++){
                         if (i >= MAX_BIDS_SHOWN) break;
 
-                        if (fs::is_regular_file(file_names[i])) {
 
+                        fs::path curr_bid_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
+                        
+                        ifstream bid_stream(curr_bid_file);
 
-                            fs::path curr_bid_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
-                            
-                            ifstream bid_stream(curr_bid_file);
+                        string uid,bid_date, bid_time;
+                        int bid_value;
+                        long long int bid_date_secs;
 
-                            string uid,bid_date, bid_time;
-                            int bid_value,bid_date_secs;
-
-                            if (!(bid_stream.is_open())){
-                                STATUS("Couldn't open bid file.")
-                                bid_stream.close();
-                                return "BAD\n";
-                            }
-
-                            if (!(bid_stream >> uid)){
-                                STATUS("Bid file doesn't have uid")
-                                return "BAD\n";
-                            }
-
-                            if (!is_valid_UID(uid)){
-                                STATUS("Bid file has a incorrectly formatted host_uid")
-                                return "BAD\n";
-                            }
-
-                            if (!(bid_stream >> bid_value)){
-                                STATUS("Bid file doesn't have start value")
-                                return "BAD\n";
-                            }
-
-                            if (!is_valid_bid_value(bid_value)){
-                                STATUS("Bid file has a incorrectly formatted start value")
-                                return "BAD\n";
-                            }
-
-                            if (!(bid_stream >> bid_date)){
-                                STATUS("Bid file doesn't have start date")
-                                return "BAD\n";
-                            }
-
-                            if (!(bid_stream >> bid_time)){
-                                STATUS("Bid file doesn't have start date")
-                                return "BAD\n";
-                            }
-
-                            string bid_datetime = bid_date + " " + bid_time;
-
-                            if (!is_valid_date_time(bid_datetime)){
-                                STATUS("Bid file has a incorrectly formatted date")
-                                return "BAD\n";
-                            }
-
-                            if (!(bid_stream >> bid_date_secs)){
-                                STATUS("Bid file doesn't have a date in seconds")
-                                return "BAD\n";
-                            }
-
-                            if (!is_valid_time_seconds(bid_date_secs,timeactive)){
-                                STATUS("Bid file has a incorrectly formatted date in seconds")
-                                return "BAD\n";
-                            }
-
-                            STATUS("OLA3")
-
-                            reply += " B " + uid + " " + to_string(bid_value) + " " + bid_datetime + " " + to_string(bid_date_secs);
-
+                        if (!(bid_stream.is_open())){
+                            STATUS("Couldn't open bid file.")
+                            bid_stream.close();
+                            return "BAD\n";
                         }
-                        else i--; //nao leu um ficheiro (probably um dir)
+
+                        if (!(bid_stream >> uid)){
+                            STATUS("Bid file doesn't have uid")
+                            return "BAD\n";
+                        }
+
+                        if (!is_valid_UID(uid)){
+                            STATUS("Bid file has a incorrectly formatted host_uid")
+                            return "BAD\n";
+                        }
+
+                        if (!(bid_stream >> bid_value)){
+                            STATUS("Bid file doesn't have start value")
+                            return "BAD\n";
+                        }
+
+                        if (!is_valid_bid_value(bid_value)){
+                            STATUS("Bid file has a incorrectly formatted start value")
+                            return "BAD\n";
+                        }
+
+                        if (!(bid_stream >> bid_date)){
+                            STATUS("Bid file doesn't have start date")
+                            return "BAD\n";
+                        }
+
+                        if (!(bid_stream >> bid_time)){
+                            STATUS("Bid file doesn't have start date")
+                            return "BAD\n";
+                        }
+
+                        string bid_datetime = bid_date + " " + bid_time;
+
+                        if (!is_valid_date_time(bid_datetime)){
+                            STATUS("Bid file has a incorrectly formatted date")
+                            return "BAD\n";
+                        }
+                        
+                        string sbds;
+                        if (!(bid_stream >> sbds)){
+                            STATUS("Bid file doesn't have a date in seconds")
+                            return "BAD\n";
+                        }
+
+                        STATUS_WA("sbds: %s", sbds.c_str())
+                        bid_date_secs = stoll(sbds);
+
+                        STATUS_WA("Parameters read: uid: %s | bid_value: %d | bid_datetime: %s | bid_date_secs: %lld",
+                                    uid.c_str(), bid_value, bid_datetime.c_str(), bid_date_secs)
+                        
+                        if (!is_valid_time_seconds(bid_date_secs,timeactive)){
+                            STATUS_WA("Bid file has a incorrectly formatted date in seconds: %s | %s",
+                                         to_string(bid_date_secs).c_str(), to_string(timeactive).c_str())
+                            return "BAD\n";
+                        }
+
+                        STATUS("OLA3")
+
+                        reply += " B " + uid + " " + to_string(bid_value) + " " + bid_datetime + " " + to_string(bid_date_secs);
                     }
                     
                 }catch (const exception& e) {
@@ -882,7 +888,7 @@ string req_showrecord(istringstream &reqstream){
                 
 
             }
-            
+            STATUS("OLA AGAIN")
             //checkar se a auction ja acabou e se ja escrever o [E ...]
             fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
             if (fs::exists(end_auction_file)){
@@ -1812,7 +1818,7 @@ string req_bid(istringstream &reqstream){
                             current_time->tm_min,current_time->tm_sec);  
 
 
-                            if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - fulltime))){
+                            if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (fulltime - start_time_secs))){
                                 STATUS("Couldn't write to bid file")
                                 bid_stream.close();
                                 return "BAD\n";
@@ -1989,8 +1995,10 @@ int handle_UDP_req(string req){
     }
 
     else if (request_type == "SRC"){
+        STATUS("OLA AGAIN")
         // f_wrlock(sv.db_dir);
         reply = req_showrecord(reqstream);
+
         // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during show record.")

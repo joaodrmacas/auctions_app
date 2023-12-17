@@ -1430,7 +1430,7 @@ int cmd_show_record(istringstream &cmdstream){
         return -1;
     }
 
-    string sbuff = "SRC OK " + AID + "\n";
+    string sbuff = "SRC " + AID + "\n";
 
     if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, 
                 sv.UDP.res->ai_addrlen) == -1) {

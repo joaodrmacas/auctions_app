@@ -266,6 +266,10 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
+                // signal(SIGINT, ignoreSignal);
+                // signal(SIGTERM, ignoreSignal);
+                signal(SIGCHLD, ignoreSignal);
+
                 memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
 
                 sv.TCP.fd = newfd;
@@ -303,8 +307,8 @@ int main(int argc, char** argv){
             size_t req_pid = fork();
 
             if (req_pid == 0){
-                signal(SIGINT, ignoreSignal);
-                signal(SIGTERM, ignoreSignal);
+                // signal(SIGINT, ignoreSignal);
+                // signal(SIGTERM, ignoreSignal);
                 signal(SIGCHLD, ignoreSignal);
 
                 
