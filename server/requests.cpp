@@ -1183,7 +1183,10 @@ string req_open(istringstream &reqstream){
             written = fwrite(tempBuf,1,old_n,asset);
             total_written += written;
 
+
+            STATUS("AQUI")
             while (total_written < asset_fsize){
+                STATUS("mais um ciclo")
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
 
@@ -1850,7 +1853,7 @@ int handle_TCP_req(){
     if (reqstream.str().length()>200) LOG_WA(sv.verbose,"Received request: %s...", reqstream.str().substr(0,200).c_str())
     else LOG_WA(sv.verbose,"Received request: %s", reqstream.str().c_str())
     
-
+    STATUS_WA("Received request: %s", reqstream.str().c_str())
     if (!(reqstream >> opcode)){
         STATUS("There's no opcode in the request")
         return -1;
