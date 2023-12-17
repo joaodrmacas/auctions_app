@@ -1,14 +1,14 @@
 CXX = g++
 CXXFLAGS = -std=c++11 -Wall -fsanitize=address -fno-omit-frame-pointer -g
 
-SRC_USER = user/commands.cpp user/user.cpp validations.cpp
+SRC_USER = client/commands.cpp client/user.cpp validations.cpp
 OBJ_USR = $(SRC_USER:.cpp=.o)
 
 SRC_SV = server/server.cpp validations.cpp server/requests.cpp
 OBJ_SV = $(SRC_SV:.cpp=.o)
 
-TARGET_USER = user.exe
-TARGET_SV = AS.exe
+TARGET_USER = user
+TARGET_SV = AS
 
 .PHONY: all
 

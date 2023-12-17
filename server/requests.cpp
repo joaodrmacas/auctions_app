@@ -619,8 +619,6 @@ string req_list(){
                         AID = entry.path().stem().string();
                         fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
 
-
-
                         if (!is_valid_AID(AID)){
                                 STATUS("Auction file name is not a valid AID.")
                                 return "BAD\n";
@@ -1185,7 +1183,7 @@ string req_open(istringstream &reqstream){
 
 
             STATUS("AQUI")
-            while (total_written < asset_fsize){
+            while (1){
                 STATUS("mais um ciclo")
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
@@ -1194,6 +1192,15 @@ string req_open(istringstream &reqstream){
                     STATUS("Could not receive show asset reply.")
                     req_open_rollback(UID,AID_str);
                     return "ROA ERR\n";
+                }
+
+                if (n == 0) {
+                    if (total_written < asset_fsize) {
+                        STATUS("Could not receive all asset.")
+                        req_open_rollback(UID,AID_str);
+                        return "ROA ERR\n";
+                    }
+                    else break;
                 }
 
                 written = fwrite(sv.TCP.buffer, 1, n, asset);

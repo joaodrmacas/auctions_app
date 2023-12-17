@@ -25,7 +25,7 @@
 #define NO_USER ("")
 #define NO_PASS ("")
 
-#define ASSETS_DIR ("user/assets/")
+#define ASSETS_DIR ("client/assets/")
 
 typedef struct __sys_var__ {
     string ASIP=MY_IP, ASport=PORT;
