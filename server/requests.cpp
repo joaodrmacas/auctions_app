@@ -1530,26 +1530,28 @@ void req_showasset(istringstream &reqstream){
             int flag = 0;
             int total_written = 0;
             STATUS("Ola5")
-            while ((bytesRead = fread(sv.TCP.buffer, 1, BUFFER_SIZE, file)) > 0) {
-                if (bytesRead == -1) {
+
+
+            while(total_written < fileSize){
+
+                memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
+                bytesRead = fread(sv.TCP.buffer,1,BUFFER_SIZE,file);
+                if (bytesRead == -1){
                     STATUS("Could not read asset file")
                     reply = "BAD\n";
                     flag = 1;
                     break;
                 }
+
+                STATUS_WA("totalwritten: %d", total_written)
+
                 size_t n = write(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-                total_written += n;
-                while (bytesRead != n) {
-                    int rest = write(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-                    if (rest <= 0) {
-                        STATUS("Could not write asset file")
-                        reply = "BAD\n";
-                        flag = 1;
-                        break;
-                    }
-                    n += rest;
-                    total_written += n;
+                if( n==-1){
+                    STATUS("Could not write asset file")
+                    flag = 1;
+                    break;
                 }
+                total_written += n;
             }
 
             STATUS("Ola6")
@@ -1689,135 +1691,137 @@ string req_bid(istringstream &reqstream){
 
                             fs::path bids_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
 
-                            vector<string> file_names;
-                            try {
+                            if (!fs::exists(bids_dir) && !fs::is_empty(bids_dir)){
+                                vector<string> file_names;
+                                try {
 
-                                STATUS("NAO DEU MERDA")
-                                for (const auto& entry : fs::directory_iterator(bids_dir)) {
-                                    if (fs::is_regular_file(entry.path())) {
-                                        file_names.push_back(entry.path().stem().string());
+                                    STATUS("NAO DEU MERDA")
+                                    for (const auto& entry : fs::directory_iterator(bids_dir)) {
+                                        STATUS("E VAI UMA")
+                                        if (fs::is_regular_file(entry.path())) {
+                                            file_names.push_back(entry.path().stem().string());
+                                        }
                                     }
+                                    
+                                    std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
+
+                                } catch (const exception& ex) {
+                                    STATUS("DEU MERDA")
+                                    STATUS("Error accessing directory")
+                                    return "BAD\n";
                                 }
+
+                                STATUS("OLA3")
+                                int highest_bid;
+
+                                fflush(stdout);
+                                STATUS_WA("OLA44 %s", file_names.at(0).c_str())
+                                fflush(stdout);
+                                highest_bid = stoi(file_names[0]);
+
                                 
-                                std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
+                                fflush(stdout);
+                                STATUS("OLA45")
+                                fflush(stdout);
+                                if (!is_valid_bid_value(highest_bid)){
+                                    STATUS("Highest value is not correctly formatted")
+                                    return "BAD\n";
+                                }
+                                fflush(stdout);
+                                STATUS("OLA46")
+                                fflush(stdout);
+                                STATUS("OLA4")
+                                fflush(stdout);
 
-                            } catch (const exception& ex) {
-                                STATUS("DEU MERDA")
-                                STATUS("Error accessing directory")
-                                return "BAD\n";
+
+                                if (value <= highest_bid){ //a bid é menor do que a maior
+                                    STATUS("OLA5")
+                                    return "RBD REF\n"; 
+                                }
                             }
-
-                            STATUS("OLA3")
-
-                            int highest_bid;
-
-                            fflush(stdout);
-                            STATUS("OLA44")
-                            fflush(stdout);
-                            highest_bid = stoi(file_names[0]);
-
                             
                             fflush(stdout);
-                            STATUS("OLA45")
+                            STATUS("OLA6")
                             fflush(stdout);
-                            if (!is_valid_bid_value(highest_bid)){
-                                STATUS("Highest value is not correctly formatted")
+                            char fname[7];
+                            sprintf(fname, "%06d", value);
+                            fs::path user_bidded_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
+
+                            ofstream bid_stream(user_bidded_file);
+                            
+                            if (!bid_stream.is_open()){
+                                STATUS("Couldn't create bid file in user directory")
+                                bid_stream.close();
+                                return "BAD\n";
+                            }
+
+                            fflush(stdout);
+                            STATUS("OLA7")
+                            fflush(stdout);
+
+
+                            bid_stream.close();
+
+                            fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+                            ifstream start_stream(start_auction_file);
+
+                            if (!start_stream.is_open()){
+                                STATUS("Could not open start auction file.");
+                                start_stream.close();
+                                return "BAD\n";
+                            }
+
+                            fflush(stdout);
+                            STATUS("OLA8")
+                            fflush(stdout);
+
+                            string trash;
+                            long int start_time_secs;
+                            if (!(start_stream>>trash>>trash>>trash>>trash>>trash>>trash>>trash>>start_time_secs)){
+                                STATUS("Error reading from START file")
+                                start_stream.close();
+                                return "BAD\n";
+                            }
+                            
+                            start_stream.close();
+
+                            if (!is_valid_start_time(start_time_secs)){
+                                STATUS("Start time is not valid")
+                                return "BAD\n";
+                            }
+
+                            fs::path auctions_bidded_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(string(fname) + ".txt");
+                            
+                            bid_stream = ofstream(auctions_bidded_file);
+
+                            if (!bid_stream.is_open()){
+                                STATUS("Couldn't create bid file in auctions directory")
+                                bid_stream.close();
+                                return "BAD\n";
+                            }
+
+                            time_t fulltime;
+                            time(&fulltime);
+                            struct tm *current_time;
+                            char timestr[20];
+
+                            current_time = gmtime(&fulltime);
+                            sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", \
+                            current_time->tm_year+1900,current_time->tm_mon+1,\
+                            current_time->tm_mday,current_time->tm_hour,\
+                            current_time->tm_min,current_time->tm_sec);  
+
+
+                            if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - fulltime))){
+                                STATUS("Couldn't write to bid file")
+                                bid_stream.close();
                                 return "BAD\n";
                             }
                             fflush(stdout);
-                            STATUS("OLA46")
+                            STATUS("OLA5")
                             fflush(stdout);
-                            STATUS("OLA4")
-                            fflush(stdout);
-
-
-                            if (value <= highest_bid){ //a bid é menor do que a maior
-                                STATUS("OLA5")
-                                return "RBD REF\n"; 
-                            }
-                            else { //Meter nos bidded
-                                fflush(stdout);
-                                STATUS("OLA6")
-                                fflush(stdout);
-                                char fname[7];
-                                sprintf(fname, "%06d", value);
-                                fs::path user_bidded_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
-
-                                ofstream bid_stream(user_bidded_file);
-                                
-                                if (!bid_stream.is_open()){
-                                    STATUS("Couldn't create bid file in user directory")
-                                    bid_stream.close();
-                                    return "BAD\n";
-                                }
-
-                                fflush(stdout);
-                                STATUS("OLA7")
-                                fflush(stdout);
-
-
-                                bid_stream.close();
-
-                                fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
-                                ifstream start_stream(start_auction_file);
-
-                                if (!start_stream.is_open()){
-                                    STATUS("Could not open start auction file.");
-                                    start_stream.close();
-                                    return "BAD\n";
-                                }
-
-                                fflush(stdout);
-                                STATUS("OLA8")
-                                fflush(stdout);
-
-                                string trash;
-                                long int start_time_secs;
-                                if (!(start_stream>>trash>>trash>>trash>>trash>>trash>>trash>>trash>>start_time_secs)){
-                                    STATUS("Error reading from START file")
-                                    start_stream.close();
-                                    return "BAD\n";
-                                }
-                                
-                                start_stream.close();
-
-                                if (!is_valid_start_time(start_time_secs)){
-                                    STATUS("Start time is not valid")
-                                    return "BAD\n";
-                                }
-
-                                fs::path auctions_bidded_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(string(fname) + ".txt");
-                                
-                                bid_stream = ofstream(auctions_bidded_file);
-
-                                if (!bid_stream.is_open()){
-                                    STATUS("Couldn't create bid file in auctions directory")
-                                    bid_stream.close();
-                                    return "BAD\n";
-                                }
-
-                                time_t fulltime;
-                                time(&fulltime);
-                                struct tm *current_time;
-                                char timestr[20];
-
-                                current_time = gmtime(&fulltime);
-                                sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", \
-                                current_time->tm_year+1900,current_time->tm_mon+1,\
-                                current_time->tm_mday,current_time->tm_hour,\
-                                current_time->tm_min,current_time->tm_sec);  
-
-
-                                if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - fulltime))){
-                                    STATUS("Couldn't write to bid file")
-                                    bid_stream.close();
-                                    return "BAD\n";
-                                }
-                                fflush(stdout);
-                                STATUS("OLA5")
-                                fflush(stdout);
-                                return "RBD OK\n";
-                            }
+                            return "RBD OK\n";
+                        
                         }
                         else return "RBD AID\n"; //AID is not active
                     }

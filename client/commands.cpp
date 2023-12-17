@@ -1388,7 +1388,8 @@ int cmd_bid(istringstream &cmdstream){
             return -1;
         }
 
-        if (status == "NOK") MSG("Auction is not active or doesn't exist.")
+        if (status == "OK") MSG("Bid was accepted.")
+        else if (status == "NOK") MSG("Auction is not active or doesn't exist.")
         else if (status == "NLG") MSG("You are not logged in.")
         else if (status == "ACC") MSG("Your bid was accepted.")
         else if (status == "REF") MSG("Your bid is smaller than the current bid value.")
@@ -1429,7 +1430,7 @@ int cmd_show_record(istringstream &cmdstream){
         return -1;
     }
 
-    string sbuff = "SRC " + AID + "\n";
+    string sbuff = "SRC OK " + AID + "\n";
 
     if(sendto(sv.UDP.fd, sbuff.c_str(), sbuff.length(), 0, sv.UDP.res->ai_addr, 
                 sv.UDP.res->ai_addrlen) == -1) {

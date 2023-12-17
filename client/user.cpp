@@ -3,8 +3,6 @@
 //system variables
 sys_var sv; 
 
-namespace fs = std::filesystem;
-
 void get_args(int argc, char **argv) {
     switch (argc) {
         case 1:
