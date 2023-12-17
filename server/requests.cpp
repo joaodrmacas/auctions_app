@@ -1907,7 +1907,7 @@ int handle_UDP_req(string req){
     }
 
 
-    f_wrlock(sv.db_dir);
+    f_wrlock("server/DB.lock");
     if (request_type == "LIN"){
         reply = req_login(reqstream);
         if (reply == ""){
@@ -1963,7 +1963,7 @@ int handle_UDP_req(string req){
         STATUS("Invalid request.")
     }
 
-    f_unlock(sv.db_dir);
+    f_unlock("server/DB.lock");
 
     STATUS_WA("Message %s will be sent", reply.c_str())
 
