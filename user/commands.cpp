@@ -2,6 +2,7 @@
 
 extern sys_var sv;
 
+
 int start_udp() {
     // UDP SOCKET
     sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
@@ -20,7 +21,7 @@ int start_udp() {
         return -1;
     }
 
-    
+    sv.UDP.active = 1;
 
     return 0;
 }
@@ -31,8 +32,11 @@ int end_udp() {
         MSG("Something went wrong.")
         STATUS("Could not close [UDP]")
         freeaddrinfo(sv.UDP.res);
+        sv.UDP.active=0;
         return -1;
     }
+
+    sv.UDP.active=0;
 
     freeaddrinfo(sv.UDP.res);
     return 0;
@@ -66,6 +70,8 @@ int start_tcp() {
         return -1;
     }
 
+    sv.TCP.active=1;
+
     return 0;
 }
 
@@ -75,11 +81,27 @@ int end_tcp() {
         MSG("Something went wrong.")
         STATUS("Could not close [TCP]")
         freeaddrinfo(sv.TCP.res);
+        sv.TCP.active=0;
         return -1;
     }
 
     freeaddrinfo(sv.TCP.res);
+    sv.TCP.active = 0;
     return 0;
+}
+
+void sig_handler(int signo) {
+    if (signo == SIGINT || signo == SIGTERM) {
+        if (sv.UDP.active){
+            end_udp();
+        }
+        else if (sv.TCP.active){
+            end_tcp();
+        }
+        sv.to_exit = true;
+        STATUS("Exiting safely...")
+        exit(EXIT_FAILURE);
+    }
 }
 
 string get_unique_fname(string fname){
@@ -702,34 +724,28 @@ int cmd_close(istringstream &cmdstream){
     }
     STATUS_WA("Close message sent: %s", sbuff.c_str())
 
-    // Reply
-    // Read till AS closes socket
-    sv.TCP.buffer[0] = '\0';
-    size_t old_n = 0;
-    while(1) {
-        if (read_timer(sv.TCP.fd) == -1) return -1;
+    memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
 
-        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+    if (read_timer(sv.TCP.fd) == -1) return -1;
+    n = read(sv.TCP.fd, sv.TCP.buffer,BUFFER_SIZE);
 
-        if (n == 0) break;
-
-        if (n == -1) {
-            MSG("Something went wrong.")
-            STATUS("Could not receive show asset reply.")
-            return -1;
-        }
-        old_n = n;
-    }
-
-    if(sv.TCP.buffer[0] == '\0') {
+    if (n==-1){
         MSG("Something went wrong.")
-        STATUS("Open reply is empty.")
+        STATUS("Could not receive close reply.")
         return -1;
     }
 
+    if (n==0){
+        MSG("Something went wrong.")
+        STATUS("Close reply is empty.")
+        return -1;
+    }
+
+    int len = strlen(sv.TCP.buffer);
+
     // Retirar o \n no final e colocar \0
-    if (sv.TCP.buffer[old_n-1] == '\n')
-        sv.TCP.buffer[old_n-1] = '\0';
+    if (sv.TCP.buffer[len-1] == '\n')
+        sv.TCP.buffer[len-1] = '\0';
     else {
         MSG("Something went wrong.")
         STATUS("No newline at the end of the message.")
@@ -1078,6 +1094,8 @@ int cmd_list(){
 
 }
 
+
+
 int cmd_show_asset(istringstream &cmdstream){
     string AID;
 
@@ -1183,6 +1201,7 @@ int cmd_show_asset(istringstream &cmdstream){
 
             fname = get_unique_fname(ASSETS_DIR + fname);
 
+
             char tempBuf[BUFFER_SIZE+1];
             memset(tempBuf,0,BUFFER_SIZE+1);
             memcpy(tempBuf,sv.TCP.buffer+bytesToRemove,BUFFER_SIZE+1-bytesToRemove);
@@ -1209,7 +1228,6 @@ int cmd_show_asset(istringstream &cmdstream){
                     fclose(file);
                     return -1;
                 }
-
 
                 size_t elements_written = fwrite(tempBuf,1,old_n,file);
                 bytes_written += elements_written;
@@ -1395,11 +1413,6 @@ int cmd_bid(istringstream &cmdstream){
 
 int cmd_show_record(istringstream &cmdstream){
     string AID;
-
-    // if (sv.UID == NO_USER) {
-    //     MSG("You are not logged in.")
-    //     return -1;
-    // }
 
     if (!(cmdstream>>AID)){
         MSG("AID is not specified.")

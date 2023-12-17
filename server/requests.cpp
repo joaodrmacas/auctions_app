@@ -121,18 +121,25 @@ int update_auction(string AID) {
         return -1;
     }
 
-    string host_uid,name,asset_fname,start_date;
+    string host_uid,name,asset_fname,start_date, start_time;
 
-    int start_value, timeactive, start_date_secs;
+    int start_value, timeactive;
+    long int start_date_secs;
 
-    if (!(start_stream >> host_uid >> name >> asset_fname >> start_value >> timeactive >> start_date >> start_date_secs)){
+    if (!(start_stream >> host_uid >> name >> asset_fname >> start_value >> timeactive >> start_date >> start_time >> start_date_secs)){
         STATUS("Something went wrong reading start auction file.")
         return -1;
     }
 
+
+
+
     //o ficheiro end é criado quando o leilao acaba
-    time_t fulltime = time(NULL);
-    if (start_date_secs + timeactive > fulltime) {
+    time_t fulltime;
+    time(&fulltime);
+
+
+    if (start_date_secs + timeactive < fulltime) {
         struct tm *current_time;
         char timestr[20];
         current_time = gmtime(&fulltime);
@@ -686,8 +693,9 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            string host_uid,name,asset_fname,start_date;
-            int start_value, timeactive, start_date_secs;
+            string host_uid,name,asset_fname,start_date, start_time;
+            int start_value, timeactive;
+            long int start_date_secs;
 
             if (!(start_stream >> host_uid)){
                 STATUS("Start file doesn't have Host_UID")
@@ -744,7 +752,14 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (!is_valid_date_time(start_date)){
+            if (!(start_stream >> start_time)){
+                STATUS("Start file doesn't have start time")
+                return "BAD\n";
+            }
+
+            string start_datetime = start_date + " " + start_time;
+
+            if (!is_valid_date_time(start_datetime)){
                 STATUS("Start file has a incorrectly formatted start date")
                 return "BAD\n";
             }
@@ -754,7 +769,7 @@ string req_showrecord(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            if (is_valid_start_time(start_date_secs)){
+            if (!is_valid_start_time(start_date_secs)){
                 STATUS("Start file has a incorrectly formatted start date in seconds")
                 return "BAD\n";
             }
@@ -783,17 +798,21 @@ string req_showrecord(istringstream &reqstream){
 
                     int len = file_names.size();
 
+                    STATUS("OLA1")
+
                     for (int i=0; i<len; i++){
                         if (i >= MAX_BIDS_SHOWN) break;
 
                         if (fs::is_regular_file(file_names[i])) {
 
+
+                            STATUS("OLA2")
                             fs::path curr_bid_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH).append(file_names[i]);
                             
                             ifstream bid_stream(curr_bid_file);
 
-                            string uid,bid_date;
-                            int bid_value, bid_date_secs;
+                            string uid,bid_date, bid_time;
+                            int bid_value,bid_date_secs;
 
                             if (!(bid_stream.is_open())){
                                 STATUS("Couldn't open bid file.")
@@ -826,7 +845,14 @@ string req_showrecord(istringstream &reqstream){
                                 return "BAD\n";
                             }
 
-                            if (!is_valid_date_time(bid_date)){
+                            if (!(bid_stream >> bid_time)){
+                                STATUS("Bid file doesn't have start date")
+                                return "BAD\n";
+                            }
+
+                            string bid_datetime = bid_date + " " + bid_time;
+
+                            if (!is_valid_date_time(bid_datetime)){
                                 STATUS("Bid file has a incorrectly formatted date")
                                 return "BAD\n";
                             }
@@ -841,7 +867,9 @@ string req_showrecord(istringstream &reqstream){
                                 return "BAD\n";
                             }
 
-                            reply += " B " + uid + " " + to_string(start_value) + " " + start_date + " " + to_string(bid_date_secs);
+                            STATUS("OLA3")
+
+                            reply += " B " + uid + " " + to_string(bid_value) + " " + bid_datetime + " " + to_string(bid_date_secs);
 
                         }
                         else i--; //nao leu um ficheiro (probably um dir)
@@ -866,12 +894,19 @@ string req_showrecord(istringstream &reqstream){
                     return "BAD\n";
                 }
 
-                string end_datetime, end_sec_time;
+                string end_date, end_time, end_sec_time;
 
-                if (!(end_stream >> end_datetime)){
+                if (!(end_stream >> end_date)){
                     STATUS("End file doesn't have a date")
                     return "BAD\n";
                 }
+
+                if (!(end_stream >> end_time)){
+                    STATUS("End file doesn't have a date")
+                    return "BAD\n";
+                }
+
+                string end_datetime = end_date + " " + end_time;
 
                 if (!is_valid_date_time(end_datetime)){
                     STATUS("End file date is incorrectly formatted")
@@ -894,6 +929,8 @@ string req_showrecord(istringstream &reqstream){
         return "RRC NOK\n";
     }
 
+    STATUS_WA("Reply: %s", reply.c_str());
+
     return reply;
 }
 
@@ -911,7 +948,7 @@ int req_open_rollback(string UID, string AID) {
         }
     }
 
-    sv.next_AID--;
+    STATUS("Rollback successful.")
 
     return 0;
 }
@@ -920,11 +957,36 @@ string req_open(istringstream &reqstream){
     string UID, req_pass;
     int n = reqstream.str().length();
     int bytesToRemove = 4;
+    string AID_str;
+    int AID=0;
 
-    if (sv.next_AID > MAX_AID) {
-            STATUS("Maximum number of auctions reached.")
-            return "ROA NOK\n";
-        }
+    ifstream nextaidstream(sv.next_AID_file);
+
+    if (!(nextaidstream.is_open())){
+        STATUS("Couldn't open next AID file.")
+        return "BAD\n";
+    }
+
+    getline(nextaidstream, AID_str);
+
+    if (nextaidstream.fail()){
+        STATUS("Error reading next AID file.")
+        return "BAD\n";
+    }
+
+    nextaidstream.close();
+
+    if (!is_valid_AID(AID_str)){
+        STATUS("AID is not correctly formatted.")
+        return "BAD\n";
+    }
+
+    AID = stoi(AID_str);
+
+    if (AID > MAX_AID) {
+        STATUS("Maximum number of auctions reached.")
+        return "ROA NOK\n";
+    }
 
     if (!(reqstream >> UID)) {
         STATUS("Unregister request doesn't have UID")
@@ -1038,15 +1100,9 @@ string req_open(istringstream &reqstream){
         pass_stream.close();
 
         if (req_pass == password){
-            char cAID[4];
-            STATUS_WA("before AID: %d", sv.next_AID);
-            sv.next_AID++;
-            sprintf(cAID, "%03d", sv.next_AID);
-            STATUS_WA("AID: %s", cAID);
-            string AID = string(cAID);
 
             fs::path hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
-            fs::path auction_file_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+            fs::path auction_file_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID_str+".txt");
 
             if (!fs::exists(hosted_dir)){
                 STATUS("Hosted directory does not exist.")
@@ -1060,11 +1116,11 @@ string req_open(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
-            fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
-            fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
-            fs::path assets_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
-            fs::path asset_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
+            fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID_str);
+            fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID_str).append("START_" + AID_str + ".txt");
+            fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID_str).append(BIDS_DIR_PATH);
+            fs::path assets_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID_str).append(ASSET_DIR_PATH);
+            fs::path asset_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID_str).append(ASSET_DIR_PATH).append(asset_fname);
 
             // cria as diretorias a partir dos paths
             if (!fs::create_directory(auction_dir)) {
@@ -1082,6 +1138,8 @@ string req_open(istringstream &reqstream){
                 return "BAD\n";
             }
 
+            STATUS("Directories created successfully.")
+
             ofstream start_stream(start_auction_file);
 
             if (!(start_stream.is_open())){
@@ -1092,6 +1150,8 @@ string req_open(istringstream &reqstream){
             time_t fulltime;
             struct tm *current_time;
             char timestr[20];
+            
+            time(&fulltime);
             current_time = gmtime(&fulltime);
             
             
@@ -1101,17 +1161,14 @@ string req_open(istringstream &reqstream){
             current_time->tm_min,current_time->tm_sec);
 
             start_stream << UID << " " << name << " " << asset_fname << " " << start_value <<
-                            " " << timeactive << " " << time(&fulltime) << " " << timestr << endl;
+                            " " << timeactive << " " << timestr << " " << fulltime << endl;
+
 
             start_stream.close();
-
-
 
             char tempBuf[BUFFER_SIZE+1];
             memset(tempBuf, 0, BUFFER_SIZE+1);
             memcpy(tempBuf, sv.TCP.buffer + bytesToRemove, BUFFER_SIZE+1-bytesToRemove);
-            printf("tempBuf: %s\n",tempBuf);
-            //tempBuf[n-bytesToRemove] = '\0'; FIXME
             
             FILE *asset = fopen(asset_file.c_str(), "wb");
             if (asset == NULL){
@@ -1131,7 +1188,7 @@ string req_open(istringstream &reqstream){
 
                 if (n==-1){
                     STATUS("Could not receive show asset reply.")
-                    req_open_rollback(UID, AID);
+                    req_open_rollback(UID,AID_str);
                     return "ROA ERR\n";
                 }
 
@@ -1179,7 +1236,26 @@ string req_open(istringstream &reqstream){
 
             STATUS_WA("Asset file was successfully saved as \"%s\".", asset_fname.c_str())
 
-            string reply = "ROA OK " + AID + "\n";
+            string reply = "ROA OK " + AID_str + "\n";
+
+            ofstream next_aid(sv.next_AID_file);
+
+            if (!(next_aid.is_open())){
+                STATUS("Couldn't open next AID file.")
+                return "BAD\n";
+            }
+
+            AID++;
+            char nAID[4];
+            sprintf(nAID, "%03d", AID);
+
+            if (!(next_aid << nAID)){
+                STATUS("Couldn't write to next AID file.")
+                return "BAD\n";
+            }
+
+            next_aid.close();
+            
 
             return reply;
         }
@@ -1517,7 +1593,8 @@ string req_close(istringstream &reqstream){
                 fs::path user_auction_hosted_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
 
                 //checkar se o auction existe
-                if (!fs::exists(curr_auction_dir)){
+                if (fs::exists(curr_auction_dir)){
+
                     if (update_auction(AID) == -1) {
                         STATUS("Error updating auction.")
                         return "BAD\n";
@@ -1531,6 +1608,7 @@ string req_close(istringstream &reqstream){
 
                             ofstream end_stream(end_auction_file);
                             time_t fulltime;
+                            time(&fulltime);
                             struct tm *current_time;
                             char timestr[20];
 
@@ -1546,7 +1624,7 @@ string req_close(istringstream &reqstream){
                             current_time->tm_mday,current_time->tm_hour,\
                             current_time->tm_min,current_time->tm_sec);   
 
-                            end_stream << timestr << " " << time(&fulltime);  
+                            end_stream << timestr << " " << fulltime;  
 
                             end_stream.close();
 
@@ -1579,7 +1657,6 @@ void req_showasset(istringstream &reqstream){
             break;
         }
 
-        printf("%s\n", AID.c_str());
 
         if (!is_valid_AID(AID)){
             STATUS("Show asset is not correctly formatted.")
@@ -1592,6 +1669,8 @@ void req_showasset(istringstream &reqstream){
             reply = "RSA ERR\n";
             break;
         }
+
+        STATUS("Ola1")
 
         fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
         fs::path auction_asset_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH);
@@ -1631,71 +1710,79 @@ void req_showasset(istringstream &reqstream){
                 break;
             }
 
+            STATUS("Ola2")
+
             reply += " " + to_string(fileSize) + " ";
 
-            //ler o ficheiro
+            int l = write(sv.TCP.fd, reply.c_str(), reply.length());
 
-            ifstream file_stream(filePath);
+            if (l!=reply.length()){
+                STATUS("Could not send show asset message")
+                reply = "BAD\n";
+                break;
+            }
 
-            if (!(file_stream.is_open())){
+            //ler e escrever o ficheiro
+
+            STATUS("Ola3")
+
+            FILE* file = fopen(filePath.c_str(), "rb");
+
+            if (file == NULL){
                 STATUS("Couldn't open asset file.")
-                file_stream.close();
                 reply = "BAD\n";
                 break;
             }
 
-            file_stream.read(sv.TCP.buffer, BUFFER_SIZE - reply.length());
-            if ((file_stream.fail() || file_stream.bad()) && !file_stream.eof()) {
-                STATUS("Could not read asset file")
-                reply = "BAD\n";
-                break;
-            }
+            fseek(file, 0, SEEK_END);
+            long file_size = ftell(file);
+            rewind(file);
 
-            sv.TCP.buffer[file_stream.gcount()] = '\0';
-            reply += sv.TCP.buffer;
+            STATUS("Ola4")
 
-            STATUS_WA("Open message sent (if too big, 1st %d bytes): %s", 90,
-                        reply.substr(0, min(90, static_cast<int>(reply.length()))).c_str())
-            
-            while(!file_stream.eof()) {
-                size_t n = write(sv.TCP.fd, reply.c_str(), reply.length());
-                if (n != reply.length()) {
-                    STATUS("Could not send open message")
-                    reply = "BAD\n";
-                    break;
-                }
-
-                file_stream.read(sv.TCP.buffer, BUFFER_SIZE);
-                if ((file_stream.fail() || file_stream.bad()) && !file_stream.eof()) {
+            memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
+            size_t bytesRead = 0;
+            int flag = 0;
+            int total_written = 0;
+            STATUS("Ola5")
+            while ((bytesRead = fread(sv.TCP.buffer, 1, BUFFER_SIZE, file)) > 0) {
+                if (bytesRead == -1) {
                     STATUS("Could not read asset file")
                     reply = "BAD\n";
+                    flag = 1;
                     break;
                 }
-
-                sv.TCP.buffer[file_stream.gcount()] = '\0';
-                reply = sv.TCP.buffer;
+                size_t n = write(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+                total_written += n;
+                while (bytesRead != n) {
+                    int rest = write(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+                    if (rest <= 0) {
+                        STATUS("Could not write asset file")
+                        reply = "BAD\n";
+                        flag = 1;
+                        break;
+                    }
+                    n += rest;
+                    total_written += n;
+                }
             }
 
-            if (reply.length() < BUFFER_SIZE) {
-                reply += "\n";
-            }
+            STATUS("Ola6")
+            if (flag) break;
 
-            size_t n = write(sv.TCP.fd, reply.c_str(), reply.length());
-            if (n != reply.length()) {
-                STATUS("Could not send open message")
+            if (total_written != file_size) {
+                STATUS_WA("total_written: %d, file_size: %ld", total_written, file_size)
+                STATUS("Failed to write all bytes")
                 reply = "BAD\n";
                 break;
             }
 
-            if (reply.length() == BUFFER_SIZE) {
-                reply = "\n";
-                n = write(sv.TCP.fd, reply.c_str(), reply.length());
-                if (n != reply.length()) {
-                    STATUS("Could not send open message")
-                    reply = "BAD\n";
-                    break;
-                }
-            } 
+            l = write(sv.TCP.fd, "\n", 1);
+            if (l!=1){
+                STATUS("Could not write \\n on message")
+                reply = "BAD\n";
+                break;
+            }
 
             return;
         }
@@ -1866,7 +1953,7 @@ string req_bid(istringstream &reqstream){
                                 }
                                 string trash;
                                 int start_time_secs;
-                                if (!(start_stream>>trash>>trash>>trash>>trash>>trash>>trash>>start_time_secs)){
+                                if (!(start_stream>>trash>>trash>>trash>>trash>>trash>>trash>>trash>>start_time_secs)){
                                     STATUS("Error reading from START file")
                                     start_stream.close();
                                     return "BAD\n";
@@ -1891,6 +1978,7 @@ string req_bid(istringstream &reqstream){
                                 }
 
                                 time_t fulltime;
+                                time(&fulltime);
                                 struct tm *current_time;
                                 char timestr[20];
 
@@ -1901,7 +1989,7 @@ string req_bid(istringstream &reqstream){
                                 current_time->tm_min,current_time->tm_sec);  
 
 
-                                if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - time(NULL)))){
+                                if (!(bid_stream<<UID<<" "<<value<<" "<<timestr<<" "<< (start_time_secs - fulltime))){
                                     STATUS("Couldn't write to bid file")
                                     bid_stream.close();
                                     return "BAD\n";
@@ -1943,6 +2031,8 @@ int handle_TCP_req(){
         return -1;
     }
     string buff = string(sv.TCP.buffer);
+
+
     istringstream reqstream(buff);
     string opcode, reply;
 
@@ -1958,15 +2048,18 @@ int handle_TCP_req(){
         reply = req_open(reqstream);
     }
     else{
-        if (buff[buff.length() - 1] == '\n'){
-            buff[buff.length()-1] = '\0';
-            string a = buff.substr(4);
-            printf("%s\t%ld\n", a.c_str(),a.length());
+        string sbuff = string(sv.TCP.buffer);
+        //remove the last /n from sbuff
+        if (sbuff[sbuff.length() - 1] == '\n'){
+            sbuff = sbuff.substr(4);
+            sbuff = sbuff.substr(0, sbuff.length() - 1);
+            STATUS_WA("Request: \"%s\"", sbuff.c_str())
         }
         else {
             STATUS("No newline at the end of the message.")
             return -1;
         }
+        reqstream = istringstream(sbuff);
 
         if (opcode == "CLS"){
             reply = req_close(reqstream);

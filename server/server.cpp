@@ -51,6 +51,62 @@ void get_args(int argc, char **argv){
     }
 }
 
+void initiateDB(){
+    fs::path db_dir = fs::path(DB_DIR_PATH);
+    fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
+    fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
+
+
+    if(fs::exists(db_dir)){
+        if (!fs::remove_all(db_dir)){
+            STATUS("Failed to delete DB directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (!fs::create_directory(db_dir)){
+        STATUS("Failed to create DB directory.")
+        exit(EXIT_FAILURE);
+    }
+
+    if(fs::exists(users_dir)){
+        if (!fs::remove_all(users_dir)){
+            STATUS("Failed to delete USERS directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (!fs::create_directory(users_dir)){
+        STATUS("Failed to create USERS directory.")
+        exit(EXIT_FAILURE);
+    }
+    
+    if(fs::exists(auctions_dir)){
+        if (!fs::remove_all(auctions_dir)){
+            STATUS("Failed to delete AUCTIONS directory.")
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (!fs::create_directory(auctions_dir)){
+        STATUS("Failed to create AUCTIONS directory.")
+        exit(EXIT_FAILURE);
+    }
+
+    ofstream next_AID_file(sv.next_AID_file);
+
+    if (!next_AID_file.is_open()) {
+        STATUS("Failed to open NEXT_AID file.")
+        exit(EXIT_FAILURE);
+    }
+
+    next_AID_file << "001";
+
+    next_AID_file.close();
+
+    STATUS("DB initiated successfully.")
+}
+
 int start_udp_socket() {
     // UDP SOCKET
     sv.UDP.fd=socket(AF_INET,SOCK_DGRAM,0); //UDP socket
@@ -175,47 +231,7 @@ int main(int argc, char** argv){
 
     get_args(argc,argv);
 
-    fs::path db_dir = fs::path(DB_DIR_PATH);
-    fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
-    fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
-
-
-    if(fs::exists(db_dir)){
-        if (!fs::remove_all(db_dir)){
-            STATUS("Failed to delete DB directory.")
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    if (!fs::create_directory(db_dir)){
-        STATUS("Failed to create DB directory.")
-        exit(EXIT_FAILURE);
-    }
-
-    if(fs::exists(users_dir)){
-        if (!fs::remove_all(users_dir)){
-            STATUS("Failed to delete USERS directory.")
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    if (!fs::create_directory(users_dir)){
-        STATUS("Failed to create USERS directory.")
-        exit(EXIT_FAILURE);
-    }
-    
-    if(fs::exists(auctions_dir)){
-        if (!fs::remove_all(auctions_dir)){
-            STATUS("Failed to delete AUCTIONS directory.")
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    if (!fs::create_directory(auctions_dir)){
-        STATUS("Failed to create AUCTIONS directory.")
-        exit(EXIT_FAILURE);
-    }
-
+    initiateDB();
 
     memset(sv.UDP.buffer,0,BUFFER_SIZE + 1);
     memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);

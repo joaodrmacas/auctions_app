@@ -4,6 +4,7 @@
 #include "user_defs.hpp"
 #include "../validations.hpp"
 
+void sig_handler(int signo);
 int cmd_login(istringstream &cmdstream);
 int cmd_logout();
 int cmd_unregister();

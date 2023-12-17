@@ -29,7 +29,7 @@ namespace fs = filesystem;
 #define DEBUG (1)
 #define STATUS_ON (1)
 
-#define PORT ("58037")
+#define PORT ("58036")
 
 #define BUFFER_SIZE (6010)
 #define FILE_NAME_MAX_SIZE (24)
@@ -59,6 +59,7 @@ typedef struct protocol {
     struct addrinfo hints,*res;
     struct sockaddr_in addr;
     char buffer[BUFFER_SIZE+1];
+    bool active = false;
 } protocol;
 
 #define ERR(...)                                                        \

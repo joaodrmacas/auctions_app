@@ -72,7 +72,9 @@ bool is_numeric(string input) {
 bool is_valid_date_time(string input) {
     std::istringstream iss(input);
     int year, month, day, hour, minute, second;
-    string syear, smonth, sday, shour, sminute, ssecond;    
+    string syear, smonth, sday, shour, sminute, ssecond;  
+
+    STATUS_WA("Input: %s", input.c_str());  
 
     if (getline(iss, syear, '-') && syear.length() == 4 && is_numeric(syear) &&
         getline(iss, smonth, '-') && smonth.length() == 2 && is_numeric(smonth) &&
@@ -182,7 +184,7 @@ bool is_valid_time_seconds(int time, int timeactive){
     return is_valid_timeactive(time) && time <= timeactive;
 }
 
-bool is_valid_start_time(int start_time){
+bool is_valid_start_time(long int start_time){
     return start_time>=0;
 }
 

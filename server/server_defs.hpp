@@ -14,6 +14,7 @@
 #define ASSETS_DIR_PATH ("ASSETS")
 #define ASSET_DIR_PATH ("ASSET")
 
+#define NEXT_AID_NAME ("NEXT_AID.txt")
 #define DB_LOCK_NAME ("DB.lock")
 #define USERS_LOCK_NAME ("USERS.lock")
 #define AUCTIONS_LOCK_NAME ("AUCTIONS.lock")
@@ -26,7 +27,8 @@ typedef struct __sys_var__ {
     string ASport=PORT;
     bool verbose = false;
     protocol UDP, TCP;
-    int next_AID = 0;
+    
+    const fs::path next_AID_file = fs::path(DB_DIR_PATH).append(NEXT_AID_NAME);
     const fs::path db_dir = fs::path(DB_DIR_PATH);
     const fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
     const fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);

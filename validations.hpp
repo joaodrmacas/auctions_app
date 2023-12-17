@@ -19,7 +19,7 @@ bool is_valid_time_seconds(int time, int timeactive);
 bool is_valid_pass(string pass);
 bool is_valid_auction_name(string name);
 bool is_valid_bid_value(int value);
-bool is_valid_start_time(int start_time);
+bool is_valid_start_time(long int start_time);
 
 
 #endif
