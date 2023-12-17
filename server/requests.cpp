@@ -1537,7 +1537,20 @@ void req_showasset(istringstream &reqstream){
             int total_written = 0;
             STATUS("Ola5")
 
+            STATUS("BEFORE")
 
+
+            int ld;
+            ld = write(sv.TCP.fd,reply.c_str(),reply.length());
+            if (ld==-1){
+                STATUS("Could not send show asset reply.")
+                reply = "BAD\n";
+                flag = 1;
+                break;
+            }
+
+            STATUS("AFTER")
+    
             while(total_written < fileSize){
 
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
@@ -1549,15 +1562,15 @@ void req_showasset(istringstream &reqstream){
                     break;
                 }
 
-                STATUS_WA("totalwritten: %d", total_written)
 
-                size_t n = write(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+                size_t n = write(sv.TCP.fd, sv.TCP.buffer, strlen(sv.TCP.buffer));
                 if( n==-1){
                     STATUS("Could not write asset file")
                     flag = 1;
                     break;
                 }
                 total_written += n;
+                STATUS_WA("totalwritten: %d", total_written)
             }
 
             STATUS("Ola6")
@@ -1570,7 +1583,7 @@ void req_showasset(istringstream &reqstream){
                 break;
             }
 
-            l = write(sv.TCP.fd, "\n", 1);
+            l = write(sv.TCP.fd,"\n", 1);
             if (l!=1){
                 STATUS("Could not write \\n on message")
                 reply = "BAD\n";
@@ -1578,6 +1591,7 @@ void req_showasset(istringstream &reqstream){
             }
 
             return;
+
         }
         else {
             reply = "RSA NOK\n";
@@ -1585,15 +1599,12 @@ void req_showasset(istringstream &reqstream){
     } while (0);
 
 
-    int n;
-    n = write(sv.TCP.fd,reply.c_str(),reply.length());
-    if (n==-1){
+    STATUS_WA("Show asset message: %s",reply.c_str())
+    int ldd = write(sv.TCP.fd,reply.c_str(),reply.length());
+    if (ldd==-1){
         STATUS("Could not send show asset reply.")
         return;
     }
-    
-
-    STATUS_WA("Show asset message: %s",reply.c_str())
 
 }
 
