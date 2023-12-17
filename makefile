@@ -12,14 +12,14 @@ TARGET_SV = AS
 
 .PHONY: all
 
-all: user server
+all: client server
 
 server: $(TARGET_SV)
 
 $(TARGET_SV): $(OBJ_SV)
 	$(CXX) -std=c++17 -o $(TARGET_SV) $(OBJ_SV)
 
-user: $(TARGET_USER)
+client: $(TARGET_USER)
 
 $(TARGET_USER): $(OBJ_USR)
 	$(CXX) -std=c++17 -o $(TARGET_USER) $(OBJ_USR)

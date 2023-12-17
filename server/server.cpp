@@ -158,7 +158,7 @@ int start_tcp_socket(){
     sv.TCP.hints.ai_family=AF_INET; //IPv4
     sv.TCP.hints.ai_socktype=SOCK_STREAM; //TCP socket
     sv.TCP.hints.ai_flags = AI_PASSIVE;
-
+      
     sv.TCP.errcode = getaddrinfo(NULL,sv.ASport.c_str(),&sv.TCP.hints,&sv.TCP.res);
     if (sv.TCP.errcode != 0){
         STATUS("Could not get address info [TCP]")
