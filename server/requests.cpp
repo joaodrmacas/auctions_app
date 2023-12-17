@@ -29,8 +29,10 @@ int read_timer(int fd) {
     return 0;
 }
 
-int f_rdlock(fs::path lock_path) {
-    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+int f_rdlock(string path) {
+    int lock_fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
+
+
 
     if (lock_fd == -1) {
         STATUS("Error opening lock file.");
@@ -50,8 +52,8 @@ int f_rdlock(fs::path lock_path) {
     return 0;
 }
 
-int f_wrlock(fs::path lock_path) {
-    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+int f_wrlock(string path) {
+    int lock_fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
 
     if (lock_fd == -1) {
         STATUS("Error opening lock file.");
@@ -68,11 +70,13 @@ int f_wrlock(fs::path lock_path) {
         return -1;
     }
 
+    STATUS("Lock created")
+
     return 0;
 }
 
-int f_unlock(fs::path lock_path) {
-    int lock_fd = open(lock_path.string().c_str(), O_RDWR | O_CREAT, 0644);
+int f_unlock(string path) {
+    int lock_fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
 
     if (lock_fd == -1) {
         STATUS("Error opening lock file.");
@@ -325,8 +329,6 @@ string req_logout(istringstream &reqstream){
     //NOK se a diretoria existe, (se o login não existe || login existe e a password está errada)
     //UNR se a diretoria não existe || se a password não existe;
     if(fs::exists(user_dir) || !(fs::exists(pass_path))){
-        //Reply FIXME
-        //Não estamos a tratar do caso em pass não existe e login existe (o que fazer?) -> dar erro
 
         //OK ou NOK
         if (fs::exists(login_path)){
@@ -626,7 +628,6 @@ string req_list(){
 
                         reply += " " + AID;
 
-                        STATUS("OLA 2")
 
                         fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
                         fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
@@ -655,7 +656,6 @@ string req_list(){
 string req_showrecord(istringstream &reqstream){
     string AID;
 
-    STATUS("OLA AGAIN")
 
     string reply = "RRC ";
     if (!(reqstream >> AID)){
@@ -677,10 +677,8 @@ string req_showrecord(istringstream &reqstream){
     fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
     fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
 
-    STATUS("OLA AGAIN")
     if (fs::exists(auction_dir)){
         if (fs::exists(start_auction_file)){
-            STATUS("OLA AGAIN")
 
             if (update_auction(AID) == -1) {
                 STATUS("Error updating auction.")
@@ -790,7 +788,6 @@ string req_showrecord(istringstream &reqstream){
 
             if (fs::exists(bids_directory) && !(fs::is_empty(bids_directory))){
                 vector<string> file_names;
-                STATUS("OLA AGAIN")
                 try {
 
                     for (const auto& entry : fs::directory_iterator(bids_directory)) {
@@ -876,7 +873,6 @@ string req_showrecord(istringstream &reqstream){
                             return "BAD\n";
                         }
 
-                        STATUS("OLA3")
 
                         reply += " B " + uid + " " + to_string(bid_value) + " " + bid_datetime + " " + to_string(bid_date_secs);
                     }
@@ -888,7 +884,6 @@ string req_showrecord(istringstream &reqstream){
                 
 
             }
-            STATUS("OLA AGAIN")
             //checkar se a auction ja acabou e se ja escrever o [E ...]
             fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
             if (fs::exists(end_auction_file)){
@@ -1188,10 +1183,9 @@ string req_open(istringstream &reqstream){
             total_written += written;
 
 
-            STATUS("AQUI")
             while (total_written < asset_fsize){
-                STATUS("mais um ciclo")
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
+                if (read_timer(sv.TCP.fd) == -1) return "BAD\n";
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
 
                 if (n==-1){
@@ -1461,7 +1455,6 @@ void req_showasset(istringstream &reqstream){
             break;
         }
 
-        STATUS("Ola1")
 
         fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
         fs::path auction_asset_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSET_DIR_PATH);
@@ -1501,8 +1494,6 @@ void req_showasset(istringstream &reqstream){
                 break;
             }
 
-            STATUS("Ola2")
-
             reply += " " + to_string(fileSize) + " ";
 
             int l = write(sv.TCP.fd, reply.c_str(), reply.length());
@@ -1515,7 +1506,6 @@ void req_showasset(istringstream &reqstream){
 
             //ler e escrever o ficheiro
 
-            STATUS("Ola3")
 
             FILE* file = fopen(filePath.c_str(), "rb");
 
@@ -1529,15 +1519,12 @@ void req_showasset(istringstream &reqstream){
             long file_size = ftell(file);
             rewind(file);
 
-            STATUS("Ola4")
 
             memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
             size_t bytesRead = 0;
             int flag = 0;
             int total_written = 0;
-            STATUS("Ola5")
 
-            STATUS("BEFORE")
 
 
             int ld;
@@ -1549,7 +1536,6 @@ void req_showasset(istringstream &reqstream){
                 break;
             }
 
-            STATUS("AFTER")
     
             while(total_written < fileSize){
 
@@ -1573,7 +1559,6 @@ void req_showasset(istringstream &reqstream){
                 STATUS_WA("totalwritten: %d", total_written)
             }
 
-            STATUS("Ola6")
             if (flag) break;
 
             if (total_written != file_size) {
@@ -1663,7 +1648,6 @@ string req_bid(istringstream &reqstream){
     fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
     fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
-    STATUS("OLA1")
 
     if(fs::exists(user_dir)){
 
@@ -1688,7 +1672,6 @@ string req_bid(istringstream &reqstream){
 
             pass_stream.close();
 
-            STATUS("OLA2")
 
             
             if (req_pass == password){
@@ -1712,9 +1695,7 @@ string req_bid(istringstream &reqstream){
                                 vector<string> file_names;
                                 try {
 
-                                    STATUS("NAO DEU MERDA")
                                     for (const auto& entry : fs::directory_iterator(bids_dir)) {
-                                        STATUS("E VAI UMA")
                                         if (fs::is_regular_file(entry.path())) {
                                             file_names.push_back(entry.path().stem().string());
                                         }
@@ -1723,43 +1704,26 @@ string req_bid(istringstream &reqstream){
                                     std::sort(file_names.begin(), file_names.end(), std::greater<std::string>());
 
                                 } catch (const exception& ex) {
-                                    STATUS("DEU MERDA")
                                     STATUS("Error accessing directory")
                                     return "BAD\n";
                                 }
 
-                                STATUS("OLA3")
                                 int highest_bid;
 
-                                fflush(stdout);
-                                STATUS_WA("OLA44 %s", file_names.at(0).c_str())
-                                fflush(stdout);
                                 highest_bid = stoi(file_names[0]);
 
                                 
-                                fflush(stdout);
-                                STATUS("OLA45")
-                                fflush(stdout);
                                 if (!is_valid_bid_value(highest_bid)){
                                     STATUS("Highest value is not correctly formatted")
                                     return "BAD\n";
                                 }
-                                fflush(stdout);
-                                STATUS("OLA46")
-                                fflush(stdout);
-                                STATUS("OLA4")
-                                fflush(stdout);
 
 
                                 if (value <= highest_bid){ //a bid é menor do que a maior
-                                    STATUS("OLA5")
                                     return "RBD REF\n"; 
                                 }
                             }
                             
-                            fflush(stdout);
-                            STATUS("OLA6")
-                            fflush(stdout);
                             char fname[7];
                             sprintf(fname, "%06d", value);
                             fs::path user_bidded_file = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(BIDDED_DIR_PATH).append(AID + ".txt");
@@ -1772,9 +1736,6 @@ string req_bid(istringstream &reqstream){
                                 return "BAD\n";
                             }
 
-                            fflush(stdout);
-                            STATUS("OLA7")
-                            fflush(stdout);
 
 
                             bid_stream.close();
@@ -1788,9 +1749,6 @@ string req_bid(istringstream &reqstream){
                                 return "BAD\n";
                             }
 
-                            fflush(stdout);
-                            STATUS("OLA8")
-                            fflush(stdout);
 
                             string trash;
                             long int start_time_secs;
@@ -1834,9 +1792,6 @@ string req_bid(istringstream &reqstream){
                                 bid_stream.close();
                                 return "BAD\n";
                             }
-                            fflush(stdout);
-                            STATUS("OLA5")
-                            fflush(stdout);
                             return "RBD OK\n";
                         
                         }
@@ -1951,66 +1906,53 @@ int handle_UDP_req(string req){
         return -1;
     }
 
+
+    f_wrlock(sv.db_dir);
     if (request_type == "LIN"){
-        // f_wrlock(sv.db_dir);
         reply = req_login(reqstream);
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during login.")
         }
     }
 
     else if (request_type == "LOU"){
-        // f_wrlock(sv.db_dir);
         reply = req_logout(reqstream);
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during logout.")
         }
     }
 
     else if (request_type == "UNR"){
-        // f_wrlock(sv.db_dir);
         reply = req_unregister(reqstream);
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during unregister.")
         }
     }
 
     else if (request_type == "LMA"){
-        // f_wrlock(sv.db_dir);
         reply = req_myauctions(reqstream);
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LMB"){
-        // f_wrlock(sv.db_dir);
         reply = req_mybids(reqstream);
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LST"){
-        // f_wrlock(sv.db_dir);
         reply = req_list();
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during list")
         }
     }
 
     else if (request_type == "SRC"){
-        STATUS("OLA AGAIN")
-        // f_wrlock(sv.db_dir);
         reply = req_showrecord(reqstream);
 
-        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during show record.")
         }
@@ -2020,6 +1962,9 @@ int handle_UDP_req(string req){
         reply = "ERR\n";
         STATUS("Invalid request.")
     }
+
+    f_unlock(sv.db_dir);
+
     STATUS_WA("Message %s will be sent", reply.c_str())
 
     n = sendto(sv.UDP.fd,reply.c_str(),reply.length(),0,(struct sockaddr*) &sv.UDP.addr,sv.UDP.addrlen);
@@ -2031,350 +1976,3 @@ int handle_UDP_req(string req){
 
     exit(EXIT_SUCCESS);
 }
-
-
-// string req_open(istringstream &reqstream){
-//     //FIXME (não sei onde colocar esta verificação)
-//     if (sv.next_AID > MAX_AID) {
-//         STATUS("Maximum number of auctions reached.")
-//         return "ROA NOK\n";
-//     }
-
-//     string UID, req_pass;
-
-//     if (!(reqstream >> UID)) {
-//         STATUS("Unregister request doesn't have UID")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_UID(UID)) {
-//         STATUS("UID is not correctly formatted.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!(reqstream >> req_pass)) {
-//         STATUS("Unregister request doesn't have password.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_pass(req_pass)) {
-//         STATUS("Password is not correctly formatted.")
-//         return "ROA ERR\n";
-//     }
-    
-//     string name;
-//     if (!(reqstream >> name)) {
-//         STATUS("Open request doesn't have password.")
-//         return "ROA ERR\n";
-//     }
-    
-//     int start_value;
-//     if (!(reqstream >> start_value)) {
-//         STATUS("Open request doesn't have value.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_bid_value(start_value)) {
-//         STATUS("Start value is not valid.")
-//         return "ROA ERR\n";
-//     }
-
-//     int timeactive;
-//     if ( !(reqstream >> timeactive)){
-//         STATUS("Timeactive is not a valid integer.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_timeactive(timeactive)){
-//         STATUS_WA("Timeactive is not valid. (Max time is %d)", MAX_TIME_ACTIVE);
-//         return "ROA ERR\n";
-//     }
-
-//     string asset_fname;
-//     if (!(reqstream >> asset_fname)) {
-//         STATUS("Open request doesn't have asset filename.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_fname(asset_fname)) {
-//         STATUS("Asset filename is not valid.")
-//         return "ROA ERR\n";
-//     }
-
-//     int asset_fsize;
-//     if (!(reqstream >> asset_fsize)) {
-//         STATUS("Open request doesn't have asset filesize.")
-//         return "ROA ERR\n";
-//     }
-
-//     if (!is_valid_fsize(asset_fsize)) {
-//         STATUS("Asset filesize is not valid.")
-//         return "ROA ERR\n";
-//     }
-
-//     fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
-//     fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
-//     fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
-
-//     //OK - user_dir existe, login existe e pass está correta
-//     //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
-//     //NLG -  user não está logged in ou não existe
-//     if(fs::exists(pass_path) && fs::exists(login_path)){
-//         ifstream pass_stream(pass_path);
-
-//         if (!(pass_stream.is_open())){
-//             STATUS("Couldn't open password file.")
-//             return "BAD\n";
-//         }
-
-//         string password;
-//         getline(pass_stream,password); // reply como a pass é alfanumerica, podemos so apanhar a primeira linha?
-
-//         if (pass_stream.fail()){
-//             STATUS("Error reading password file.")
-//             return "BAD\n";
-//         }
-
-//         pass_stream.close();
-
-//         if (req_pass == password) {
-//             // get AID from sv.next_AID
-//             char cAID[4];
-//             sprintf(cAID, "%03d", sv.next_AID++);
-//             string AID = string(cAID);
-
-//             fs::path hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
-//             fs::path auction_file_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
-
-//             if (!fs::exists(hosted_dir)){
-//                 STATUS("Hosted directory does not exist.")
-//                 return "BAD\n";
-//             }
-
-//             ofstream auction_file(auction_file_path);
-
-//             if (!(auction_file.is_open())){
-//                 STATUS("Couldn't create auction file.")
-//                 return "BAD\n";
-//             }
-
-//             // cria os paths para a auction
-//             fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
-//             fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
-//             fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
-//             fs::path assets_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
-//             fs::path asset_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
-
-//             // cria as diretorias a partir dos paths
-//             if (!fs::create_directory(auction_dir)) {
-//                 STATUS("Error creating auction directory.")
-//                 return "BAD\n";
-//             }
-
-//             if (!fs::create_directory(bids_auction_dir)) {
-//                 STATUS("Error creating bids directory.")
-//                 return "BAD\n";
-//             }
-
-//             if (!fs::create_directory(assets_auction_dir)) {
-//                 STATUS("Error creating assets directory.")
-//                 return "BAD\n";
-//             }
-            
-//             // cria o ficheiro de start
-//             ofstream start_stream(start_auction_file);
-
-//             if (!(start_stream.is_open())){
-//                 STATUS("Couldn't create start auction file")
-//                 return "BAD\n";
-//             }
-
-//             STATUS("Its going 1")
-
-//             // escrever para o ficheiro UID name asset_fname start_value timeactive start_datetime start_fulltime
-//             // calculo do start_datetime e start_fulltime
-//             time_t fulltime;
-//             struct tm *current_time;
-//             char timestr[20];
-//             current_time = gmtime(&fulltime);
-            
-            
-//             sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", 
-//             current_time->tm_year+1900,current_time->tm_mon+1,
-//             current_time->tm_mday,current_time->tm_hour,
-//             current_time->tm_min,current_time->tm_sec);
-
-//             start_stream << UID << " " << name << " " << asset_fname << " " << start_value <<
-//                             " " << timeactive << " " << time(&fulltime) << " " << timestr << endl;
-
-//             start_stream.close();
-            
-//             ofstream asset_stream(asset_file);
-
-//             if (!(asset_stream.is_open())){
-//                 STATUS("Couldn't create asset file")
-//                 return "BAD\n";
-//             }
-
-//             STATUS("Its going 2")
-
-//             // initialize sv.TCP.buffer with just the Fdata
-//             string sreq = reqstream.str().substr(reqstream.tellg());
-//             reqstream = istringstream(sreq);
-
-//             memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
-//             strncpy(sv.TCP.buffer, sreq.c_str(),BUFFER_SIZE);
-
-
-//             // escrever os restantes bytes do asset que vieram do socket
-//             size_t n, old_n = sreq.length();
-
-//             int i=3;
-//             while(1) {
-//                 i++;
-//                 if (read_timer(sv.TCP.fd) == -1) return "ROA ERR\n";
-
-
-//                 STATUS_WA("Its going: %d, bytes: %ld",i,n)
-//                 // printf("Buffer: %s\n", sv.TCP.buffer);
-//                 memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
-//                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-
-                
-//                 if (n == 0) break;
-
-//                 if (n == -1) {
-//                     STATUS("Could not receive show asset reply.")
-//                     req_open_rollback(UID, AID);
-//                     return "ROA ERR\n";
-//                 }
-
-//                 if (!(asset_stream << reqstream.str())){
-//                     STATUS("Error writing to file.")
-//                     return "BAD\n";
-//                 }
-
-//                 sv.TCP.buffer[n] = '\0';
-//                 reqstream = istringstream(sv.TCP.buffer);
-
-//                 old_n = n;
-//             }
-
-//             // Retirar o \n no final e colocar \0
-//             if (sv.TCP.buffer[old_n-1] == '\n')
-//                 sv.TCP.buffer[old_n-1] = '\0';
-//             else {
-//                 STATUS("No newline at the end of the message.")
-//                 req_open_rollback(UID, AID);
-//                 return "ROA ERR\n";
-//             }
-//             STATUS("Its going 4")
-
-//             reqstream = istringstream(sv.TCP.buffer);
-
-//             if (!(asset_stream << reqstream.str())){
-//                     STATUS("Error writing to file.")
-//                     return "BAD\n";
-//                 }
-//             return "ROA OK\n";
-//         }
-//         else return "ROA NOK\n";  //Login existe mas pass errada
-//     }
-//     else return "ROA NLG\n"; //o user não está logado
-
-//     return "BAD\n";
-// }
-
-// int handle_TCP_req() {
-//     bool err_with_st = false;
-
-//     size_t n = 0;
-
-//     // 76 is the max length of the reply without the last space and the Fdata of the open command
-//     for (int total_n = 0; total_n < 76; total_n += n) {
-//         if (read_timer(sv.TCP.fd) == -1) {
-//             if (total_n >= 3) err_with_st = true;
-//             break;
-//         }
-
-//         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
-        
-//         if (n == -1) {
-//             STATUS("Could not receive tcp reply.")
-//             if (total_n >= 3) err_with_st = true;
-//             break;
-//         }
-//         if (n == 0) {
-//             STATUS("No more bytes in tcp message.")
-//             if (sbuff[total_n - 1] == '\n')
-//                 sbuff[total_n - 1] = '\0';
-//             else {
-//                 STATUS("No newline at the end of the message.")
-//                 err_with_st = true;
-//             }
-//             break;
-//         }
-
-//         sv.TCP.buffer[n] = '\0';
-//         sbuff += string(sv.TCP.buffer);
-//     }
-
-//     LOG_WA(sv.verbose,"Received request: %s", sbuff.c_str())
-
-//     istringstream reqstream(string(sv.TCP.buffer));
-//     string request_type, reply;
-
-//     if (!(reqstream>>request_type)){
-//         STATUS("Invalid command")
-//         return -1;
-//     }
-
-//     if (request_type == "OPA"){
-//         if (err_with_st) reply = "ROA ERR\n";
-//         else {
-//             //f_wrlock(sv.db_dir);
-//             reply = req_open(reqstream);
-//             //f_unlock(sv.db_dir);
-//         }
-//     }
-
-//     else if (request_type == "CLS"){
-//         if (err_with_st) reply = "RCL ERR\n";
-//         else {
-//             //f_wrlock(sv.db_dir);
-//             reply = req_close(reqstream);
-//             //f_unlock(sv.db_dir);
-//         }
-//     }
-
-//     else if (request_type == "SAS"){
-//         if (err_with_st) reply = "RSA ERR\n";
-//         else {
-//             //f_rdlock(sv.db_dir);
-//             req_showasset(reqstream);
-//             //f_unlock(sv.db_dir);
-//             return 0;
-//         }
-//     }
-    
-//     else if (request_type == "BID"){
-//         if (err_with_st) reply = "RBD ERR\n";
-//         else {
-//             //f_wrlock(sv.db_dir);
-//             reply = req_bid(reqstream);
-//             //f_unlock(sv.db_dir);
-//         }
-//     }
-//     else reply = "ERR\n";
-
-//     //send reply
-//     n = write(sv.TCP.fd, reply.c_str(), reply.length());
-//     if (n == -1) {
-//         STATUS("Could not send message")
-//         return -1;
-//     }
-
-//     STATUS_WA("Message sent: %s",reply.c_str())
-
-//     return 0;
-// }

@@ -46,7 +46,6 @@ void get_args(int argc, char **argv){
             }
             break;
         default:
-            printf("%d\n", argc);
             ERR("Invalid number of arguments")
     }
 }
