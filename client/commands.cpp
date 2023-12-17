@@ -1216,8 +1216,9 @@ int cmd_show_asset(istringstream &cmdstream){
             while (1){
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
 
-                if (read_timer(sv.TCP.fd)==-1) return -1;
+                STATUS("PARADO AQUI")
 
+                if (read_timer(sv.TCP.fd)==-1) return -1;
                 n = read(sv.TCP.fd,sv.TCP.buffer,BUFFER_SIZE);
                 if (n==0) break;
                 if(n==-1){
@@ -1226,6 +1227,8 @@ int cmd_show_asset(istringstream &cmdstream){
                     fclose(file);
                     return -1;
                 }
+
+                STATUS("PARADO ACOLA")
 
                 size_t elements_written = fwrite(tempBuf,1,old_n,file);
                 bytes_written += elements_written;
