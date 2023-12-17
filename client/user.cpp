@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     string cmd;
     get_args(argc, argv);
 
-    fs::path assets_dir = "user/assets";
+    fs::path assets_dir = ASSETS_DIR;
     
     if(fs::exists(assets_dir)){
         if (!fs::remove_all(assets_dir)){

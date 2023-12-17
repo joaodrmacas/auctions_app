@@ -1183,7 +1183,7 @@ string req_open(istringstream &reqstream){
 
 
             STATUS("AQUI")
-            while (1){
+            while (total_written < asset_fsize){
                 STATUS("mais um ciclo")
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);

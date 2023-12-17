@@ -24,7 +24,7 @@
 #include <sys/wait.h>
 
 using namespace std;
-namespace fs = filesystem;
+namespace fs = std::filesystem;
 
 #define DEBUG (1)
 #define STATUS_ON (1)
