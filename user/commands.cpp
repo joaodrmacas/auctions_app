@@ -499,7 +499,7 @@ int cmd_open(istringstream &cmdstream) {
                     + to_string(start_value) + " " + to_string(timeactive) + " "
                     + asset_fname + " ";
     
-    ifstream fasset(asset_fname, ios::in | ios::ate);
+    ifstream fasset(asset_fname, ios::in | ios::ate | ios::binary);
 
     if (fasset.is_open()) {
         size_t size = fasset.tellg();
@@ -1188,7 +1188,7 @@ int cmd_show_asset(istringstream &cmdstream){
             memcpy(tempBuf,sv.TCP.buffer+bytesToRemove,BUFFER_SIZE+1-bytesToRemove);
             tempBuf[n-bytesToRemove] = '\0';
 
-            FILE *file = fopen(fname.c_str(), "w");
+            FILE *file = fopen(fname.c_str(), "wb");
             if (file == NULL) {
                 MSG("Something went wrong.")
                 STATUS("Could not open asset file.")

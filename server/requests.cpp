@@ -1113,45 +1113,60 @@ string req_open(istringstream &reqstream){
             printf("tempBuf: %s\n",tempBuf);
             //tempBuf[n-bytesToRemove] = '\0'; FIXME
             
-            FILE *asset = fopen(asset_file.c_str(), "w");
+            FILE *asset = fopen(asset_file.c_str(), "wb");
             if (asset == NULL){
                 STATUS("Couldn't create asset file.")
                 return "BAD\n";
             }
+
             int old_n = strlen(tempBuf);
-            int written=0, total_written=old_n-1;
-            printf("old_n: %d\ntotal_written: %d",old_n,total_written);
-            int j=0;
-            while(total_written < asset_fsize){
-                //if (read_timer(sv.TCP.fd)==-1) return "ROA ERR\n";
+            int written=0, total_written=0;
+            
+            written = fwrite(tempBuf,1,old_n,asset);
+            total_written += written;
+
+            while (total_written < asset_fsize){
                 memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
 
-                if (n==0) break;
                 if (n==-1){
                     STATUS("Could not receive show asset reply.")
                     req_open_rollback(UID, AID);
                     return "ROA ERR\n";
                 }
 
-                written = fwrite(tempBuf,1,old_n,asset);
+                written = fwrite(sv.TCP.buffer,1,n,asset);
                 total_written += written;
-
-                memset(tempBuf, 0, BUFFER_SIZE+1);
-                memcpy(tempBuf, sv.TCP.buffer, BUFFER_SIZE+1);
-                old_n = n;
             }
 
-            if (tempBuf[old_n-1]=='\n'){
-                tempBuf[old_n-1] = '\0';
-            }
-            else {
-                STATUS("No newline at the end of the message.")
-                fclose(asset);
-                return "ROA ERR\n";
+            fclose(asset);
+
+            asset = fopen(asset_file.c_str(), "rb");
+            if (asset == NULL){
+                STATUS("Couldn't open asset file for reading.")
+                return "BAD\n";
             }
 
-            written = fwrite(tempBuf,1,old_n-1,asset);
+            // Determine the file size
+            fseek(asset, 0, SEEK_END);
+            long asset_fsize = ftell(asset);
+
+            // Open the file in update mode
+            asset = freopen(asset_file.c_str(), "r+", asset);
+            if (asset == NULL){
+                STATUS("Couldn't open asset file for modification.")
+                return "BAD\n";
+            }
+
+            // Seek to the position one character before the end
+            fseek(asset, -1, SEEK_END);
+
+            // Truncate the file at that position
+            int result = truncate(asset_file.c_str(), ftell(asset));
+            if (result != 0) {
+                STATUS("Error truncating the file.")
+                // Handle the error, rollback, or return an appropriate value
+            }
 
             fclose(asset);
 
