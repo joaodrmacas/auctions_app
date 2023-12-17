@@ -917,13 +917,14 @@ int req_open_rollback(string UID, string AID) {
 }
 
 string req_open(istringstream &reqstream){
-    //FIXME (não sei onde colocar esta verificação)
-    if (sv.next_AID > MAX_AID) {
-        STATUS("Maximum number of auctions reached.")
-        return "ROA NOK\n";
-    }
-
     string UID, req_pass;
+    int n = reqstream.str().length();
+    int bytesToRemove = 4;
+
+    if (sv.next_AID > MAX_AID) {
+            STATUS("Maximum number of auctions reached.")
+            return "ROA NOK\n";
+        }
 
     if (!(reqstream >> UID)) {
         STATUS("Unregister request doesn't have UID")
@@ -935,6 +936,8 @@ string req_open(istringstream &reqstream){
         return "ROA ERR\n";
     }
 
+    bytesToRemove += UID.length()+1;
+
     if (!(reqstream >> req_pass)) {
         STATUS("Unregister request doesn't have password.")
         return "ROA ERR\n";
@@ -944,12 +947,21 @@ string req_open(istringstream &reqstream){
         STATUS("Password is not correctly formatted.")
         return "ROA ERR\n";
     }
+
+    bytesToRemove += req_pass.length()+1;
     
     string name;
     if (!(reqstream >> name)) {
-        STATUS("Open request doesn't have password.")
+        STATUS("Open request doesn't have name.")
         return "ROA ERR\n";
     }
+
+    if (!is_valid_auction_name){
+        STATUS("Auction name is not valid.")
+        return "ROA ERR\n";
+    }
+
+    bytesToRemove += name.length()+1;
     
     int start_value;
     if (!(reqstream >> start_value)) {
@@ -962,6 +974,8 @@ string req_open(istringstream &reqstream){
         return "ROA ERR\n";
     }
 
+    bytesToRemove += to_string(start_value).length()+1;
+
     int timeactive;
     if ( !(reqstream >> timeactive)){
         STATUS("Timeactive is not a valid integer.")
@@ -972,6 +986,8 @@ string req_open(istringstream &reqstream){
         STATUS_WA("Timeactive is not valid. (Max time is %d)", MAX_TIME_ACTIVE);
         return "ROA ERR\n";
     }
+
+    bytesToRemove += to_string(timeactive).length()+1;
 
     string asset_fname;
     if (!(reqstream >> asset_fname)) {
@@ -984,6 +1000,8 @@ string req_open(istringstream &reqstream){
         return "ROA ERR\n";
     }
 
+    bytesToRemove += asset_fname.length()+1;
+
     int asset_fsize;
     if (!(reqstream >> asset_fsize)) {
         STATUS("Open request doesn't have asset filesize.")
@@ -995,14 +1013,13 @@ string req_open(istringstream &reqstream){
         return "ROA ERR\n";
     }
 
+    bytesToRemove += to_string(asset_fsize).length()+1;
+
     fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
     fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
     fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
 
-    //OK - user_dir existe, login existe e pass está correta
-    //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
-    //NLG -  user não está logged in ou não existe
-    if(fs::exists(pass_path) && fs::exists(login_path)){
+    if (fs::exists(pass_path) && fs::exists(login_path)){
         ifstream pass_stream(pass_path);
 
         if (!(pass_stream.is_open())){
@@ -1020,10 +1037,12 @@ string req_open(istringstream &reqstream){
 
         pass_stream.close();
 
-        if (req_pass == password) {
-            // get AID from sv.next_AID
+        if (req_pass == password){
             char cAID[4];
-            sprintf(cAID, "%03d", sv.next_AID++);
+            STATUS_WA("before AID: %d", sv.next_AID);
+            sv.next_AID++;
+            sprintf(cAID, "%03d", sv.next_AID);
+            STATUS_WA("AID: %s", cAID);
             string AID = string(cAID);
 
             fs::path hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
@@ -1041,7 +1060,6 @@ string req_open(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            // cria os paths para a auction
             fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
             fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
             fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
@@ -1063,8 +1081,7 @@ string req_open(istringstream &reqstream){
                 STATUS("Error creating assets directory.")
                 return "BAD\n";
             }
-            
-            // cria o ficheiro de start
+
             ofstream start_stream(start_auction_file);
 
             if (!(start_stream.is_open())){
@@ -1072,8 +1089,6 @@ string req_open(istringstream &reqstream){
                 return "BAD\n";
             }
 
-            // escrever para o ficheiro UID name asset_fname start_value timeactive start_datetime start_fulltime
-            // calculo do start_datetime e start_fulltime
             time_t fulltime;
             struct tm *current_time;
             char timestr[20];
@@ -1089,70 +1104,329 @@ string req_open(istringstream &reqstream){
                             " " << timeactive << " " << time(&fulltime) << " " << timestr << endl;
 
             start_stream.close();
-            
-            ofstream asset_stream(asset_file);
 
-            if (!(asset_stream.is_open())){
-                STATUS("Couldn't create asset file")
+
+
+            char tempBuf[BUFFER_SIZE+1];
+            memset(tempBuf, 0, BUFFER_SIZE+1);
+            memcpy(tempBuf, sv.TCP.buffer + bytesToRemove, BUFFER_SIZE+1-bytesToRemove);
+            printf("tempBuf: %s\n",tempBuf);
+            //tempBuf[n-bytesToRemove] = '\0'; FIXME
+            
+            FILE *asset = fopen(asset_file.c_str(), "w");
+            if (asset == NULL){
+                STATUS("Couldn't create asset file.")
                 return "BAD\n";
             }
-
-            // initialize sv.TCP.buffer with just the Fdata
-            string sreq = reqstream.str().substr(reqstream.tellg());
-            reqstream = istringstream(sreq);
-
-            strcpy(sv.TCP.buffer, sreq.c_str());
-
-            // escrever os restantes bytes do asset que vieram do socket
-            size_t n, old_n = sreq.length();
-
-            while(1) {
+            int old_n = strlen(tempBuf);
+            int written=0, total_written=old_n-1;
+            printf("old_n: %d\ntotal_written: %d",old_n,total_written);
+            int j=0;
+            while(total_written < asset_fsize){
+                //if (read_timer(sv.TCP.fd)==-1) return "ROA ERR\n";
+                memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
 
-                if (read_timer(sv.TCP.fd) == -1) return "ROA ERR\n";
-                
-                if (n == 0) break;
-
-                if (n == -1) {
+                if (n==0) break;
+                if (n==-1){
                     STATUS("Could not receive show asset reply.")
                     req_open_rollback(UID, AID);
                     return "ROA ERR\n";
                 }
 
-                if (!(asset_stream << reqstream.str())){
-                    STATUS("Error writing to file.")
-                    return "BAD\n";
-                }
+                written = fwrite(tempBuf,1,old_n,asset);
+                total_written += written;
 
-                sv.TCP.buffer[n] = '\0';
-                reqstream = istringstream(sv.TCP.buffer);
-
+                memset(tempBuf, 0, BUFFER_SIZE+1);
+                memcpy(tempBuf, sv.TCP.buffer, BUFFER_SIZE+1);
                 old_n = n;
             }
 
-            // Retirar o \n no final e colocar \0
-            if (sv.TCP.buffer[old_n-1] == '\n')
-                sv.TCP.buffer[old_n-1] = '\0';
+            if (tempBuf[old_n-1]=='\n'){
+                tempBuf[old_n-1] = '\0';
+            }
             else {
                 STATUS("No newline at the end of the message.")
-                req_open_rollback(UID, AID);
+                fclose(asset);
                 return "ROA ERR\n";
             }
 
-            reqstream = istringstream(sv.TCP.buffer);
+            written = fwrite(tempBuf,1,old_n-1,asset);
 
-            if (!(asset_stream << reqstream.str())){
-                    STATUS("Error writing to file.")
-                    return "BAD\n";
-                }
-            return "ROA OK\n";
+            fclose(asset);
+
+            STATUS_WA("There were written %d bytes to asset file", total_written)
+
+            if (total_written!=asset_fsize){
+                STATUS("Bytes written to asset file != fsize")
+                return "ROA ERR\n";
+            }
+
+            STATUS_WA("Asset file was successfully saved as \"%s\".", asset_fname.c_str())
+
+            string reply = "ROA OK " + AID + "\n";
+
+            return reply;
         }
-        else return "ROA NOK\n";  //Login existe mas pass errada
+        else return "ROA NOK\n";
     }
-    else return "ROA NLG\n"; //o user não está logado
+    else return "ROA NLG\n";
 
     return "BAD\n";
 }
+
+
+// string req_open(istringstream &reqstream){
+//     //FIXME (não sei onde colocar esta verificação)
+//     if (sv.next_AID > MAX_AID) {
+//         STATUS("Maximum number of auctions reached.")
+//         return "ROA NOK\n";
+//     }
+
+//     string UID, req_pass;
+
+//     if (!(reqstream >> UID)) {
+//         STATUS("Unregister request doesn't have UID")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_UID(UID)) {
+//         STATUS("UID is not correctly formatted.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!(reqstream >> req_pass)) {
+//         STATUS("Unregister request doesn't have password.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_pass(req_pass)) {
+//         STATUS("Password is not correctly formatted.")
+//         return "ROA ERR\n";
+//     }
+    
+//     string name;
+//     if (!(reqstream >> name)) {
+//         STATUS("Open request doesn't have password.")
+//         return "ROA ERR\n";
+//     }
+    
+//     int start_value;
+//     if (!(reqstream >> start_value)) {
+//         STATUS("Open request doesn't have value.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_bid_value(start_value)) {
+//         STATUS("Start value is not valid.")
+//         return "ROA ERR\n";
+//     }
+
+//     int timeactive;
+//     if ( !(reqstream >> timeactive)){
+//         STATUS("Timeactive is not a valid integer.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_timeactive(timeactive)){
+//         STATUS_WA("Timeactive is not valid. (Max time is %d)", MAX_TIME_ACTIVE);
+//         return "ROA ERR\n";
+//     }
+
+//     string asset_fname;
+//     if (!(reqstream >> asset_fname)) {
+//         STATUS("Open request doesn't have asset filename.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_fname(asset_fname)) {
+//         STATUS("Asset filename is not valid.")
+//         return "ROA ERR\n";
+//     }
+
+//     int asset_fsize;
+//     if (!(reqstream >> asset_fsize)) {
+//         STATUS("Open request doesn't have asset filesize.")
+//         return "ROA ERR\n";
+//     }
+
+//     if (!is_valid_fsize(asset_fsize)) {
+//         STATUS("Asset filesize is not valid.")
+//         return "ROA ERR\n";
+//     }
+
+//     fs::path user_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID);
+//     fs::path pass_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_pass.txt");
+//     fs::path login_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(UID + "_login.txt");
+
+//     //OK - user_dir existe, login existe e pass está correta
+//     //NOK - user_dir existe, (se o login não existe || login existe e password está errada) 
+//     //NLG -  user não está logged in ou não existe
+//     if(fs::exists(pass_path) && fs::exists(login_path)){
+//         ifstream pass_stream(pass_path);
+
+//         if (!(pass_stream.is_open())){
+//             STATUS("Couldn't open password file.")
+//             return "BAD\n";
+//         }
+
+//         string password;
+//         getline(pass_stream,password); // reply como a pass é alfanumerica, podemos so apanhar a primeira linha?
+
+//         if (pass_stream.fail()){
+//             STATUS("Error reading password file.")
+//             return "BAD\n";
+//         }
+
+//         pass_stream.close();
+
+//         if (req_pass == password) {
+//             // get AID from sv.next_AID
+//             char cAID[4];
+//             sprintf(cAID, "%03d", sv.next_AID++);
+//             string AID = string(cAID);
+
+//             fs::path hosted_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH);
+//             fs::path auction_file_path = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH).append(UID).append(HOSTED_DIR_PATH).append(AID+".txt");
+
+//             if (!fs::exists(hosted_dir)){
+//                 STATUS("Hosted directory does not exist.")
+//                 return "BAD\n";
+//             }
+
+//             ofstream auction_file(auction_file_path);
+
+//             if (!(auction_file.is_open())){
+//                 STATUS("Couldn't create auction file.")
+//                 return "BAD\n";
+//             }
+
+//             // cria os paths para a auction
+//             fs::path auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
+//             fs::path start_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("START_" + AID + ".txt");
+//             fs::path bids_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(BIDS_DIR_PATH);
+//             fs::path assets_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH);
+//             fs::path asset_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append(ASSETS_DIR_PATH).append(asset_fname);
+
+//             // cria as diretorias a partir dos paths
+//             if (!fs::create_directory(auction_dir)) {
+//                 STATUS("Error creating auction directory.")
+//                 return "BAD\n";
+//             }
+
+//             if (!fs::create_directory(bids_auction_dir)) {
+//                 STATUS("Error creating bids directory.")
+//                 return "BAD\n";
+//             }
+
+//             if (!fs::create_directory(assets_auction_dir)) {
+//                 STATUS("Error creating assets directory.")
+//                 return "BAD\n";
+//             }
+            
+//             // cria o ficheiro de start
+//             ofstream start_stream(start_auction_file);
+
+//             if (!(start_stream.is_open())){
+//                 STATUS("Couldn't create start auction file")
+//                 return "BAD\n";
+//             }
+
+//             STATUS("Its going 1")
+
+//             // escrever para o ficheiro UID name asset_fname start_value timeactive start_datetime start_fulltime
+//             // calculo do start_datetime e start_fulltime
+//             time_t fulltime;
+//             struct tm *current_time;
+//             char timestr[20];
+//             current_time = gmtime(&fulltime);
+            
+            
+//             sprintf(timestr, "%4d-%02d-%02d %02d:%02d:%02d", 
+//             current_time->tm_year+1900,current_time->tm_mon+1,
+//             current_time->tm_mday,current_time->tm_hour,
+//             current_time->tm_min,current_time->tm_sec);
+
+//             start_stream << UID << " " << name << " " << asset_fname << " " << start_value <<
+//                             " " << timeactive << " " << time(&fulltime) << " " << timestr << endl;
+
+//             start_stream.close();
+            
+//             ofstream asset_stream(asset_file);
+
+//             if (!(asset_stream.is_open())){
+//                 STATUS("Couldn't create asset file")
+//                 return "BAD\n";
+//             }
+
+//             STATUS("Its going 2")
+
+//             // initialize sv.TCP.buffer with just the Fdata
+//             string sreq = reqstream.str().substr(reqstream.tellg());
+//             reqstream = istringstream(sreq);
+
+//             memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
+//             strncpy(sv.TCP.buffer, sreq.c_str(),BUFFER_SIZE);
+
+
+//             // escrever os restantes bytes do asset que vieram do socket
+//             size_t n, old_n = sreq.length();
+
+//             int i=3;
+//             while(1) {
+//                 i++;
+//                 if (read_timer(sv.TCP.fd) == -1) return "ROA ERR\n";
+
+
+//                 STATUS_WA("Its going: %d, bytes: %ld",i,n)
+//                 // printf("Buffer: %s\n", sv.TCP.buffer);
+//                 memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
+//                 n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+
+                
+//                 if (n == 0) break;
+
+//                 if (n == -1) {
+//                     STATUS("Could not receive show asset reply.")
+//                     req_open_rollback(UID, AID);
+//                     return "ROA ERR\n";
+//                 }
+
+//                 if (!(asset_stream << reqstream.str())){
+//                     STATUS("Error writing to file.")
+//                     return "BAD\n";
+//                 }
+
+//                 sv.TCP.buffer[n] = '\0';
+//                 reqstream = istringstream(sv.TCP.buffer);
+
+//                 old_n = n;
+//             }
+
+//             // Retirar o \n no final e colocar \0
+//             if (sv.TCP.buffer[old_n-1] == '\n')
+//                 sv.TCP.buffer[old_n-1] = '\0';
+//             else {
+//                 STATUS("No newline at the end of the message.")
+//                 req_open_rollback(UID, AID);
+//                 return "ROA ERR\n";
+//             }
+//             STATUS("Its going 4")
+
+//             reqstream = istringstream(sv.TCP.buffer);
+
+//             if (!(asset_stream << reqstream.str())){
+//                     STATUS("Error writing to file.")
+//                     return "BAD\n";
+//                 }
+//             return "ROA OK\n";
+//         }
+//         else return "ROA NOK\n";  //Login existe mas pass errada
+//     }
+//     else return "ROA NLG\n"; //o user não está logado
+
+//     return "BAD\n";
+// }
 
 string req_close(istringstream &reqstream){
     string UID, req_pass, AID;
@@ -1290,6 +1564,8 @@ void req_showasset(istringstream &reqstream){
             break;
         }
 
+        printf("%s\n", AID.c_str());
+
         if (!is_valid_AID(AID)){
             STATUS("Show asset is not correctly formatted.")
             reply = "RSA ERR\n";
@@ -1297,7 +1573,7 @@ void req_showasset(istringstream &reqstream){
         }
 
         if (!reqstream.eof()){
-            STATUS("Close request format is incorrect.")
+            STATUS("Show asset request format is incorrect.")
             reply = "RSA ERR\n";
             break;
         }
@@ -1635,89 +1911,63 @@ string req_bid(istringstream &reqstream){
     return "BAD\n";
 }
 
-int handle_TCP_req() {
-    bool err_with_st = false;
+int handle_TCP_req(){
 
-    string sbuff;
     size_t n = 0;
-    // 76 is the max length of the reply without the last space and the Fdata of the open command
-    for (int total_n = 0; total_n < 76; total_n += n) {
-        if (read_timer(sv.TCP.fd) == -1) {
-            if (total_n >= 3) err_with_st = true;
-            break;
-        }
 
-        n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+    memset(sv.TCP.buffer, 0, BUFFER_SIZE+1);
+    if (read_timer(sv.TCP.fd) == -1) return -1;
+    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+
+    if (n == -1) {
+        STATUS("Could not receive tcp request.")
         
-        if (n == -1) {
-            STATUS("Could not receive tcp reply.")
-            if (total_n >= 3) err_with_st = true;
-            break;
-        }
-        if (n == 0) {
-            STATUS("No more bytes in tcp message.")
-            if (sbuff[total_n - 1] == '\n')
-                sbuff[total_n - 1] = '\0';
-            else {
-                STATUS("No newline at the end of the message.")
-                err_with_st = true;
-            }
-            break;
-        }
-
-        sv.TCP.buffer[n] = '\0';
-        sbuff += string(sv.TCP.buffer);
     }
-
-    LOG_WA(sv.verbose,"Received request: %s", sbuff.c_str())
-
-    istringstream reqstream(string(sv.TCP.buffer));
-    string request_type, reply;
-
-    if (!(reqstream>>request_type)){
-        STATUS("Invalid command")
+    if (n == 0) {
+        STATUS("Empty tcp message.")
         return -1;
     }
+    string buff = string(sv.TCP.buffer);
+    istringstream reqstream(buff);
+    string opcode, reply;
 
-    if (request_type == "OPA"){
-        if (err_with_st) reply = "RLI ERR\n";
-        else {
-            f_wrlock(sv.db_dir);
-            reply = req_open(reqstream);
-            f_unlock(sv.db_dir);
-        }
+    if (reqstream.str().length()>200) LOG_WA(sv.verbose,"Received request: %s...", reqstream.str().substr(0,200).c_str())
+    else LOG_WA(sv.verbose,"Received request: %s", reqstream.str().c_str())
+    
+
+    if (!(reqstream >> opcode)){
+        STATUS("There's no opcode in the request")
+        return -1;
     }
-
-    else if (request_type == "CLS"){
-        if (err_with_st) reply = "RCL ERR\n";
+    if (opcode == "OPA"){
+        reply = req_open(reqstream);
+    }
+    else{
+        if (buff[buff.length() - 1] == '\n'){
+            buff[buff.length()-1] = '\0';
+            string a = buff.substr(4);
+            printf("%s\t%ld\n", a.c_str(),a.length());
+        }
         else {
-            f_wrlock(sv.db_dir);
+            STATUS("No newline at the end of the message.")
+            return -1;
+        }
+
+        if (opcode == "CLS"){
             reply = req_close(reqstream);
-            f_unlock(sv.db_dir);
         }
-    }
-
-    else if (request_type == "SAS"){
-        if (err_with_st) reply = "RSA ERR\n";
-        else {
-            f_rdlock(sv.db_dir);
+        else if (opcode == "SAS"){
             req_showasset(reqstream);
-            f_unlock(sv.db_dir);
             return 0;
         }
-    }
-    
-    else if (request_type == "BID"){
-        if (err_with_st) reply = "RBD ERR\n";
-        else {
-            f_wrlock(sv.db_dir);
+        else if (opcode == "BID"){
             reply = req_bid(reqstream);
-            f_unlock(sv.db_dir);
+        }
+        else {
+            reply = "ERR\n";
         }
     }
-    else reply = "ERR\n";
 
-    //send reply
     n = write(sv.TCP.fd, reply.c_str(), reply.length());
     if (n == -1) {
         STATUS("Could not send message")
@@ -1728,6 +1978,100 @@ int handle_TCP_req() {
 
     return 0;
 }
+
+// int handle_TCP_req() {
+//     bool err_with_st = false;
+
+//     size_t n = 0;
+
+//     // 76 is the max length of the reply without the last space and the Fdata of the open command
+//     for (int total_n = 0; total_n < 76; total_n += n) {
+//         if (read_timer(sv.TCP.fd) == -1) {
+//             if (total_n >= 3) err_with_st = true;
+//             break;
+//         }
+
+//         n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
+        
+//         if (n == -1) {
+//             STATUS("Could not receive tcp reply.")
+//             if (total_n >= 3) err_with_st = true;
+//             break;
+//         }
+//         if (n == 0) {
+//             STATUS("No more bytes in tcp message.")
+//             if (sbuff[total_n - 1] == '\n')
+//                 sbuff[total_n - 1] = '\0';
+//             else {
+//                 STATUS("No newline at the end of the message.")
+//                 err_with_st = true;
+//             }
+//             break;
+//         }
+
+//         sv.TCP.buffer[n] = '\0';
+//         sbuff += string(sv.TCP.buffer);
+//     }
+
+//     LOG_WA(sv.verbose,"Received request: %s", sbuff.c_str())
+
+//     istringstream reqstream(string(sv.TCP.buffer));
+//     string request_type, reply;
+
+//     if (!(reqstream>>request_type)){
+//         STATUS("Invalid command")
+//         return -1;
+//     }
+
+//     if (request_type == "OPA"){
+//         if (err_with_st) reply = "ROA ERR\n";
+//         else {
+//             //f_wrlock(sv.db_dir);
+//             reply = req_open(reqstream);
+//             //f_unlock(sv.db_dir);
+//         }
+//     }
+
+//     else if (request_type == "CLS"){
+//         if (err_with_st) reply = "RCL ERR\n";
+//         else {
+//             //f_wrlock(sv.db_dir);
+//             reply = req_close(reqstream);
+//             //f_unlock(sv.db_dir);
+//         }
+//     }
+
+//     else if (request_type == "SAS"){
+//         if (err_with_st) reply = "RSA ERR\n";
+//         else {
+//             //f_rdlock(sv.db_dir);
+//             req_showasset(reqstream);
+//             //f_unlock(sv.db_dir);
+//             return 0;
+//         }
+//     }
+    
+//     else if (request_type == "BID"){
+//         if (err_with_st) reply = "RBD ERR\n";
+//         else {
+//             //f_wrlock(sv.db_dir);
+//             reply = req_bid(reqstream);
+//             //f_unlock(sv.db_dir);
+//         }
+//     }
+//     else reply = "ERR\n";
+
+//     //send reply
+//     n = write(sv.TCP.fd, reply.c_str(), reply.length());
+//     if (n == -1) {
+//         STATUS("Could not send message")
+//         return -1;
+//     }
+
+//     STATUS_WA("Message sent: %s",reply.c_str())
+
+//     return 0;
+// }
 
 int handle_UDP_req(string req){
 
@@ -1751,63 +2095,63 @@ int handle_UDP_req(string req){
     }
 
     if (request_type == "LIN"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_login(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during login.")
         }
     }
 
     else if (request_type == "LOU"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_logout(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during logout.")
         }
     }
 
     else if (request_type == "UNR"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_unregister(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during unregister.")
         }
     }
 
     else if (request_type == "LMA"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_myauctions(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LMB"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_mybids(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during my auctions.")
         }
     }
 
     else if (request_type == "LST"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_list();
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during list")
         }
     }
 
     else if (request_type == "SRC"){
-        f_wrlock(sv.db_dir);
+        // f_wrlock(sv.db_dir);
         reply = req_showrecord(reqstream);
-        f_unlock(sv.db_dir);
+        // f_unlock(sv.db_dir);
         if (reply == ""){
             STATUS("Error during show record.")
         }

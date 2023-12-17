@@ -82,7 +82,6 @@ int end_tcp() {
     return 0;
 }
 
-
 string get_unique_fname(string fname){
     if (!ifstream(fname)) return fname;
     string stem,extension;
@@ -126,34 +125,6 @@ string get_unique_fname(string fname){
     return fname;
 }
 
-// string get_unique_fname(string fname) {
-//     if (!ifstream(fname)) return fname;
-
-//     int n = 1;
-//     string fname_old = fname;
-
-//     fname += " (" + to_string(n) + ")";
-
-//     STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
-
-//     while(ifstream(fname)) {
-//         int n_pos;
-//         for (n_pos = fname.length() - 1; n_pos >= 0; n_pos--) {
-//             if (fname[n_pos] == '(') {
-//                 n_pos++;
-//                 break;
-//             }
-//         }
-
-//         fname_old = fname;
-//         fname = fname.substr(0, n_pos) + to_string(++n) + ")";
-
-//         STATUS_WA("%s already exists. Trying %s", fname_old.c_str(), fname.c_str());
-//     }
-    
-//     return fname;
-// }
-
 int read_timer(int fd) {
     /* Set up the file descriptor set for select */
     fd_set readSet;
@@ -184,10 +155,10 @@ int read_timer(int fd) {
 int cmd_login(istringstream &cmdstream) {
     string UID, pass;
 
-    // if (sv.UID != NO_USER){
-    //     MSG("You are already logged in.")
-    //     return -1;
-    // }
+    if (sv.UID != NO_USER){
+        MSG("You are already logged in.")
+        return -1;
+    }
     
     if ( !(cmdstream >> UID) ){
         MSG("UID not specified.")
@@ -607,30 +578,26 @@ int cmd_open(istringstream &cmdstream) {
     // Read till AS closes socket
     sv.TCP.buffer[0] = '\0';
     size_t n, old_n = 0;
-    while(1) {
-        if (read_timer(sv.UDP.fd) == -1) return -1;
 
-        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+    if (read_timer(sv.TCP.fd) == -1) return -1;
+    memset(sv.TCP.buffer,0,BUFFER_SIZE + 1);
+    n = read(sv.TCP.fd,sv.TCP.buffer, BUFFER_SIZE);
 
-        if (n == 0) break;
-
-        if (n == -1) {
-            MSG("Something went wrong.")
-            STATUS("Could not receive show asset reply.")
-            return -1;
-        }
-        old_n = n;
+    if (n==-1){
+        MSG("Something went wrong.")
+        STATUS("Could not receive open reply.")
+        return -1;
     }
 
-    if(sv.TCP.buffer[0] == '\0') {
+    if(n==0){
         MSG("Something went wrong.")
         STATUS("Open reply is empty.")
         return -1;
     }
 
-    // Retirar o \n no final e colocar \0
-    if (sv.TCP.buffer[old_n-1] == '\n')
-        sv.TCP.buffer[old_n-1] = '\0';
+    int len = strlen(sv.TCP.buffer);
+    if (sv.TCP.buffer[len-1] == '\n')
+        sv.TCP.buffer[len-1] = '\0';
     else {
         MSG("Something went wrong.")
         STATUS("No newline at the end of the message.")
@@ -740,7 +707,7 @@ int cmd_close(istringstream &cmdstream){
     sv.TCP.buffer[0] = '\0';
     size_t old_n = 0;
     while(1) {
-        if (read_timer(sv.UDP.fd) == -1) return -1;
+        if (read_timer(sv.TCP.fd) == -1) return -1;
 
         n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
 
@@ -1247,14 +1214,6 @@ int cmd_show_asset(istringstream &cmdstream){
                 size_t elements_written = fwrite(tempBuf,1,old_n,file);
                 bytes_written += elements_written;
 
-                // Check if the write operation was successful
-                if (elements_written != old_n) {
-                    MSG("Something went wrong.")
-                    STATUS("Failed to write all bytes to asset file.")
-                    fclose(file);
-                    return -1; // Return an error code
-                }
-
                 memset(tempBuf,0,BUFFER_SIZE+1);
                 memcpy(tempBuf,sv.TCP.buffer,BUFFER_SIZE+1);
                 old_n = n;
@@ -1278,18 +1237,7 @@ int cmd_show_asset(istringstream &cmdstream){
 
             STATUS_WA("Bytes_written: %d\t\tfsize: %d", bytes_written,fsize);
 
-
-            // Check if the write operation was successful
-            if (elements_written != old_n-1) {
-                MSG("Something went wrong.")
-                STATUS("Failed to write all bytes to asset file.")
-                fclose(file);
-                return -1; // Return an error code
-            }
-
             fclose(file);
-
-
 
             STATUS_WA("There were written %d bytes to asset file", bytes_written);
 
@@ -1378,7 +1326,7 @@ int cmd_bid(istringstream &cmdstream){
     sv.TCP.buffer[0] = '\0';
     size_t old_n = 0;
     while(1) {
-        if (read_timer(sv.UDP.fd) == -1) return -1;
+        if (read_timer(sv.TCP.fd) == -1) return -1;
 
         n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
 

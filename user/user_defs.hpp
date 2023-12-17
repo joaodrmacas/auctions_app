@@ -5,8 +5,6 @@
 #include "../validations.hpp"
 #include "commands.hpp"
 
-#define STATUS_ON (1)
-
 #define STATUS(msg)                                                     \
     {if (STATUS_ON) {printf("[STATUS]: %s  [Line %d] [File %s]\n", msg, __LINE__, __FILE__);}}
 

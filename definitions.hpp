@@ -29,7 +29,7 @@ namespace fs = filesystem;
 #define DEBUG (1)
 #define STATUS_ON (1)
 
-#define PORT ("58036")
+#define PORT ("58037")
 
 #define BUFFER_SIZE (6010)
 #define FILE_NAME_MAX_SIZE (24)
@@ -46,7 +46,7 @@ namespace fs = filesystem;
 #define END_TIME_LEN (5)
 #define MAX_AUCTIONS (1000)
 
-#define TIMEOUT_SECONDS (10)
+#define TIMEOUT_SECONDS (15)
 
 typedef struct bid {
     string UID, date_time;
