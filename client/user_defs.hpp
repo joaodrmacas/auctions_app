@@ -32,6 +32,6 @@ typedef struct __sys_var__ {
     string UID = NO_USER;
     string pass = NO_PASS;
     int to_exit = 0;
-} sys_var;
+} sys_var;  
 
 #endif

@@ -1,5 +1,0 @@
-login 100313 12312312
-open tauas A.txt 1 99999
-logout
-login 123456 12312312
-b 001 2

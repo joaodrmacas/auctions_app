@@ -1,4 +1,5 @@
 #include "server_defs.hpp"
+#include <filesystem>
 
 sys_var sv;
 
@@ -51,43 +52,43 @@ void get_args(int argc, char **argv){
 }
 
 void initiateDB(){
-    fs::path db_dir = fs::path(DB_DIR_PATH);
-    fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
-    fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
+    std::filesystem::path db_dir = std::filesystem::path(DB_DIR_PATH);
+    std::filesystem::path users_dir = std::filesystem::path(DB_DIR_PATH).append(USERS_DIR_PATH);
+    std::filesystem::path auctions_dir = std::filesystem::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
 
 
-    if(fs::exists(db_dir)){
-        if (!fs::remove_all(db_dir)){
+    if(std::filesystem::exists(db_dir)){
+        if (!std::filesystem::remove_all(db_dir)){
             STATUS("Failed to delete DB directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-    if (!fs::create_directory(db_dir)){
+    if (!std::filesystem::create_directory(db_dir)){
         STATUS("Failed to create DB directory.")
         exit(EXIT_FAILURE);
     }
 
-    if(fs::exists(users_dir)){
-        if (!fs::remove_all(users_dir)){
+    if(std::filesystem::exists(users_dir)){
+        if (!std::filesystem::remove_all(users_dir)){
             STATUS("Failed to delete USERS directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-    if (!fs::create_directory(users_dir)){
+    if (!std::filesystem::create_directory(users_dir)){
         STATUS("Failed to create USERS directory.")
         exit(EXIT_FAILURE);
     }
     
-    if(fs::exists(auctions_dir)){
-        if (!fs::remove_all(auctions_dir)){
+    if(std::filesystem::exists(auctions_dir)){
+        if (!std::filesystem::remove_all(auctions_dir)){
             STATUS("Failed to delete AUCTIONS directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-    if (!fs::create_directory(auctions_dir)){
+    if (!std::filesystem::create_directory(auctions_dir)){
         STATUS("Failed to create AUCTIONS directory.")
         exit(EXIT_FAILURE);
     }

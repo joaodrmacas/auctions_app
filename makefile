@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -fsanitize=address -fno-omit-frame-pointer -g
+# CXXFLAGS = -std=c++11 -Wall -fsanitize=address -fno-omit-frame-pointer -g
 
 SRC_USER = client/commands.cpp client/user.cpp validations.cpp
 OBJ_USR = $(SRC_USER:.cpp=.o)
@@ -17,15 +17,15 @@ all: client server
 server: $(TARGET_SV)
 
 $(TARGET_SV): $(OBJ_SV)
-	$(CXX) -std=c++17 -o $(TARGET_SV) $(OBJ_SV)
+	$(CXX) -std=c++17 -lstdc++ -o $(TARGET_SV) $(OBJ_SV)
 
 client: $(TARGET_USER)
 
 $(TARGET_USER): $(OBJ_USR)
-	$(CXX) -std=c++17 -o $(TARGET_USER) $(OBJ_USR)
+	$(CXX) -std=c++17 -lstdc++ -o $(TARGET_USER) $(OBJ_USR)
 
 %.o: %.cpp
-	$(CXX) -c $< -o $@
+	$(CXX) -std=c++17 -lstdc++ -c $< -o $@
 
 clean:
 	rm -f $(OBJ_USR) $(OBJ_SV) $(TARGET_USER) $(TARGET_SV)

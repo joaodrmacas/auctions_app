@@ -1,4 +1,5 @@
 #include "user_defs.hpp"
+#include <filesystem>
 
 //system variables
 sys_var sv; 
@@ -52,16 +53,16 @@ int main(int argc, char** argv) {
     string cmd;
     get_args(argc, argv);
 
-    fs::path assets_dir = ASSETS_DIR;
+    std::filesystem::path assets_dir = ASSETS_DIR;
     
-    if(fs::exists(assets_dir)){
-        if (!fs::remove_all(assets_dir)){
+    if(std::filesystem::exists(assets_dir)){
+        if (!std::filesystem::remove_all(assets_dir)){
             STATUS("Failed to delete assets directory.")
             exit(EXIT_FAILURE);
         }
     }
 
-    if (fs::create_directory(assets_dir)){
+    if (std::filesystem::create_directory(assets_dir)){
         STATUS("Assets directory created successfully")
     }
     else {

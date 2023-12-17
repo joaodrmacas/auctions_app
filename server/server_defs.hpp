@@ -28,15 +28,15 @@ typedef struct __sys_var__ {
     bool verbose = false;
     protocol UDP, TCP;
     
-    const fs::path next_AID_file = fs::path(DB_DIR_PATH).append(NEXT_AID_NAME);
-    const fs::path db_dir = fs::path(DB_DIR_PATH);
-    const fs::path users_dir = fs::path(DB_DIR_PATH).append(USERS_DIR_PATH);
-    const fs::path auctions_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
+    const std::filesystem::path next_AID_file = std::filesystem::path(DB_DIR_PATH).append(NEXT_AID_NAME);
+    const std::filesystem::path db_dir = std::filesystem::path(DB_DIR_PATH);
+    const std::filesystem::path users_dir = std::filesystem::path(DB_DIR_PATH).append(USERS_DIR_PATH);
+    const std::filesystem::path auctions_dir = std::filesystem::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH);
 
     
-    const fs::path db_lock = fs::path(DB_LOCK_NAME);
-    const fs::path users_lock = fs::path(DB_DIR_PATH).append(USERS_LOCK_NAME);
-    const fs::path auctions_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_LOCK_NAME);
+    const std::filesystem::path db_lock = std::filesystem::path(DB_LOCK_NAME);
+    const std::filesystem::path users_lock = std::filesystem::path(DB_DIR_PATH).append(USERS_LOCK_NAME);
+    const std::filesystem::path auctions_lock = std::filesystem::path(DB_DIR_PATH).append(AUCTIONS_LOCK_NAME);
 
 } sys_var;
 
