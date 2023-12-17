@@ -7,8 +7,8 @@ OBJ_USR = $(SRC_USER:.cpp=.o)
 SRC_SV = server/server.cpp validations.cpp server/requests.cpp
 OBJ_SV = $(SRC_SV:.cpp=.o)
 
-TARGET_USER = user/user.exe
-TARGET_SV = server/AS.exe
+TARGET_USER = user.exe
+TARGET_SV = AS.exe
 
 .PHONY: all
 

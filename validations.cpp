@@ -13,6 +13,7 @@ bool is_valid_port (string port) {
 
 bool is_valid_ip (string ip) {
     struct sockaddr_in sa;
+    if (ip == "localhost") return true;
     int result = inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr));
     return result != 0;
 }

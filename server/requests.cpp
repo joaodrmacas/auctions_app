@@ -615,10 +615,11 @@ string req_list(){
         reply += "OK";
             try {
                 for (const auto& entry : fs::directory_iterator(auctions_dir)) {
-                    if (fs::is_regular_file(entry.path())) { // Reply este if é preciso?
                         string AID;
                         AID = entry.path().stem().string();
                         fs::path auction_dir_lock = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID+".lock");
+
+
 
                         if (!is_valid_AID(AID)){
                                 STATUS("Auction file name is not a valid AID.")
@@ -626,6 +627,8 @@ string req_list(){
                         }
 
                         reply += " " + AID;
+
+                        STATUS("OLA 2")
 
                         fs::path curr_auction_dir = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID);
                         fs::path end_auction_file = fs::path(DB_DIR_PATH).append(AUCTIONS_DIR_PATH).append(AID).append("END_" + AID + ".txt");
@@ -639,7 +642,6 @@ string req_list(){
                             reply += " 1";
                         }
                         else reply += " 0";
-                    }
                 }
                 reply += "\n";
             } catch (const filesystem::filesystem_error& e) {
@@ -1191,7 +1193,7 @@ string req_open(istringstream &reqstream){
                     return "ROA ERR\n";
                 }
 
-                written = fwrite(sv.TCP.buffer,1,n,asset);
+                written = fwrite(sv.TCP.buffer, 1, n, asset);
                 total_written += written;
             }
 
@@ -1823,7 +1825,7 @@ string req_bid(istringstream &reqstream){
     return "BAD\n";
 }
 
-int handle_TCP_req(){
+int handle_TCP_req(){   
 
     size_t n = 0;
 
@@ -1985,6 +1987,7 @@ int handle_UDP_req(string req){
         reply = "ERR\n";
         STATUS("Invalid request.")
     }
+    STATUS_WA("Message %s will be sent", reply.c_str())
 
     n = sendto(sv.UDP.fd,reply.c_str(),reply.length(),0,(struct sockaddr*) &sv.UDP.addr,sv.UDP.addrlen);
     if (n==-1){
@@ -1992,7 +1995,6 @@ int handle_UDP_req(string req){
         exit(EXIT_FAILURE);
     }
 
-    STATUS("Message sent")
 
     exit(EXIT_SUCCESS);
 }
