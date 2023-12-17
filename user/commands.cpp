@@ -1094,8 +1094,6 @@ int cmd_list(){
 
 }
 
-
-
 int cmd_show_asset(istringstream &cmdstream){
     string AID;
 
@@ -1339,41 +1337,38 @@ int cmd_bid(istringstream &cmdstream){
 
     STATUS_WA("Bid message sent: %s", sbuff.c_str())
 
-    // Reply
-    // Read till AS closes socket
-    sv.TCP.buffer[0] = '\0';
-    size_t old_n = 0;
-    while(1) {
-        if (read_timer(sv.TCP.fd) == -1) return -1;
+    memset(sv.TCP.buffer,0,BUFFER_SIZE+1);
 
-        n = read(sv.TCP.fd, sv.TCP.buffer + old_n, BUFFER_SIZE - old_n);
+    if (read_timer(sv.TCP.fd) == -1) return -1;
 
-        if (n == 0) break;
+    n = read(sv.TCP.fd, sv.TCP.buffer, BUFFER_SIZE);
 
-        if (n == -1) {
-            MSG("Something went wrong.")
-            STATUS("Could not receive show asset reply.")
-            return -1;
-        }
-        old_n = n;
-    }
-
-    if(sv.TCP.buffer[0] == '\0') {
+    if (n == 0) {
         MSG("Something went wrong.")
-        STATUS("Open reply is empty.")
+        STATUS("Bid reply is empty.")
         return -1;
     }
 
+    if (n == -1) {
+        MSG("Something went wrong.")
+        STATUS("Could not receive show asset reply.")
+        return -1;
+    }
+
+    int len = strlen(sv.TCP.buffer);
+
+    STATUS_WA("Bid reply received: \"%s\"", sv.TCP.buffer)
+
     // Retirar o \n no final e colocar \0
-    if (sv.TCP.buffer[old_n-1] == '\n')
-        sv.TCP.buffer[old_n-1] = '\0';
+    if (sv.TCP.buffer[len-1] == '\n')
+        sv.TCP.buffer[len-1] = '\0';
     else {
         MSG("Something went wrong.")
         STATUS("No newline at the end of the message.")
         return -1;
     }
 
-    STATUS_WA("Close reply received: %s", sv.TCP.buffer);
+    STATUS_WA("Bid reply received: %s", sv.TCP.buffer);
 
     istringstream reply(string(sv.TCP.buffer));
 
@@ -1393,11 +1388,16 @@ int cmd_bid(istringstream &cmdstream){
             return -1;
         }
 
-        if (status == "NOK") MSG("Auction is not active.")
+        if (status == "NOK") MSG("Auction is not active or doesn't exist.")
         else if (status == "NLG") MSG("You are not logged in.")
         else if (status == "ACC") MSG("Your bid was accepted.")
         else if (status == "REF") MSG("Your bid is smaller than the current bid value.")
         else if (status == "ILG") MSG("You can't bid on your own auction.")
+        else{
+            MSG("Something went wrong.")
+            STATUS("Can't comprehend server's reply.")
+            return -1;
+        }
 
     }
     else {
@@ -1598,6 +1598,8 @@ int cmd_show_record(istringstream &cmdstream){
                         return -1;
                     }
 
+                    STATUS_WA("endtime: %d",end_sec);
+
                     if (!is_valid_time_seconds(end_sec, timeactive)){
                         MSG("Something went wrong.")
                         STATUS("End time is not valid.")
@@ -1678,10 +1680,10 @@ int cmd_show_record(istringstream &cmdstream){
             }
 
             if (ended) {
-                MSG_WA("Auction ended at %s, lasting %d seconds.", end_date_time.c_str(), end_sec)
+                MSG_WA("Auction ended at %s, lasting %d second(s).", end_date_time.c_str(), end_sec)
             }
             else {
-                MSG("Auction is still active.")
+                MSG("Auction is active.")
             }
 
         }

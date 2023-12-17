@@ -74,8 +74,6 @@ bool is_valid_date_time(string input) {
     int year, month, day, hour, minute, second;
     string syear, smonth, sday, shour, sminute, ssecond;  
 
-    STATUS_WA("Input: %s", input.c_str());  
-
     if (getline(iss, syear, '-') && syear.length() == 4 && is_numeric(syear) &&
         getline(iss, smonth, '-') && smonth.length() == 2 && is_numeric(smonth) &&
         getline(iss, sday, ' ') && sday.length() == 2 && is_numeric(sday) && 
