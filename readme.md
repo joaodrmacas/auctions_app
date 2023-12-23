@@ -28,11 +28,11 @@ Por fim, o user está pronto para ser interrompido a qualquer momento e acaba de
 O makefile está feito de forma a que o comando 'make' compile o servidor e o cliente, criando os executaveis de cada um,
 na diretoria atual.
 Para além disso, o makefile tem:
-    'make clean' para limpar qualquer ficheiro de objetos e executaveis.
-    'make client' para compilar e criar o executavel do user
-    'make server' para compilar e criar o executavel do server
-    'make run_client' para correr o cliente sem flags
-    'make run_server' para correr o server sem flags
+- 'make clean' para limpar qualquer ficheiro de objetos e executaveis.
+- 'make client' para compilar e criar o executavel do user
+- 'make server' para compilar e criar o executavel do server
+- 'make run_client' para correr o cliente sem flags
+- 'make run_server' para correr o server sem flags
 
 
 
