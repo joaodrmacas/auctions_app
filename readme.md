@@ -1,7 +1,7 @@
 
-- Projeto Rede de Computadores (TCP e UDP)
+# Projeto Rede de Computadores (TCP e UDP)
 
-Server AS
+## Server AS
 
 O auction server é inicializado com o executável "AS" e ao ser aberto tem argumentos opcionais para alterar a PORT e para ativar o modo verboso.
 O server inicializa gerando uma base de dados e fazendo fork() para ter um processo à espera de pedidos TCP e outro pedidos UDP. Quando algum dos processos recebe um
@@ -14,7 +14,7 @@ O servidor quando necessita de ler informações do utilizador, espera durante 1
 Por fim, o servidor está pronto para ser interrompido a qualquer momento e acaba de forma segura as suas diferentes ligações. 
 Ao ser reinicializado, o servidor apaga a sua base de dados e cria uma nova.
 
-Client User
+## Client User
 
 O utilizador é inicializado criando uma pasta de assets para si mesmo onde vai guardar qualquer imagem enviada pelo server sobre o item que está a ser leiloado. De seguida
 o espera por comandos no stdin para comunicar com o servidor.
@@ -23,16 +23,16 @@ Este quando necessita de ler informação do servidor, espera 10 segundos e apó
 Por fim, o user está pronto para ser interrompido a qualquer momento e acaba de forma segura as suas diferentes ligações. 
 
 
-Utilização
+## Utilização
 
 O makefile está feito de forma a que o comando 'make' compile o servidor e o cliente, criando os executaveis de cada um,
 na diretoria atual.
 Para além disso, o makefile tem:
- - 'make clean' para limpar qualquer ficheiro de objetos e executaveis.
- - 'make client' para compilar e criar o executavel do user
- - 'make server' para compilar e criar o executavel do server
- - 'make run_client' para correr o cliente sem flags
- - 'make run_server' para correr o server sem flags
+    'make clean' para limpar qualquer ficheiro de objetos e executaveis.
+    'make client' para compilar e criar o executavel do user
+    'make server' para compilar e criar o executavel do server
+    'make run_client' para correr o cliente sem flags
+    'make run_server' para correr o server sem flags
 
 
 
